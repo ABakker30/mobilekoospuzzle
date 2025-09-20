@@ -7,7 +7,6 @@ interface ShapeToolbarProps {
   originalCID: string;
   brightness: number;
   editMode: 'add' | 'delete';
-  onLoad: () => void;
   onSave: () => void;
   onBrowseLibrary: () => void;
   onBrightnessChange: (brightness: number) => void;
@@ -21,7 +20,6 @@ export default function ShapeToolbar({
   originalCID,
   brightness,
   editMode,
-  onLoad,
   onSave,
   onBrowseLibrary,
   onBrightnessChange,
@@ -39,7 +37,7 @@ export default function ShapeToolbar({
       flexDirection: 'column',
       gap: '12px'
     }}>
-      {/* Top row - Load/Save and Cell count */}
+      {/* Top row - Browse Library/Save and Cell count */}
       <div style={{
         display: 'flex',
         justifyContent: 'space-between',
@@ -48,24 +46,6 @@ export default function ShapeToolbar({
         gap: '8px'
       }}>
         <div style={{ display: 'flex', gap: '8px', flexWrap: 'wrap' }}>
-          <button
-            onClick={onLoad}
-            disabled={loading}
-            style={{
-              padding: '8px 16px',
-              backgroundColor: '#007bff',
-              color: 'white',
-              border: 'none',
-              borderRadius: '6px',
-              fontSize: '14px',
-              fontWeight: '500',
-              cursor: loading ? 'not-allowed' : 'pointer',
-              opacity: loading ? 0.6 : 1
-            }}
-          >
-            {loading ? 'Loading...' : 'Load'}
-          </button>
-          
           <button
             onClick={onBrowseLibrary}
             disabled={loading}

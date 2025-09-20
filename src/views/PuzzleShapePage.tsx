@@ -6,7 +6,7 @@ import ShapeToolbar from '../components/shape/ShapeToolbar';
 import LibraryBrowser from '../components/shape/LibraryBrowser';
 import { FCCCoord } from '../lib/coords/fcc';
 import { computeShortCID } from '../lib/cid';
-import { loadJSONFile, saveJSONFile } from '../services/files';
+import { saveJSONFile } from '../services/files';
 import { validateContainerV1, containerToV1Format } from '../lib/guards/containerV1';
 
 export default function PuzzleShapePage() {
@@ -101,45 +101,6 @@ export default function PuzzleShapePage() {
     }
   }, [coordinates, containerName, originalCID]);
 
-  const handleLoad = async () => {
-    setLoading(true);
-    setError('');
-    
-    // Clear all existing data first
-    setCoordinates([]);
-    setContainerName('');
-    setCurrentCID('');
-    setOriginalCID('');
-    
-    try {
-      const data = await loadJSONFile();
-      const validation = validateContainerV1(data);
-      
-      if (!validation.valid) {
-        throw new Error(validation.error);
-      }
-      
-      const container = validation.container!;
-      const fccCoords: FCCCoord[] = container.cells!.map(([x, y, z]) => ({ x, y, z }));
-      
-      setCoordinates(fccCoords);
-      setContainerName(container.name || 'Untitled Container');
-      
-      // Set original CID for comparison
-      if (container.cid) {
-        const shortOriginalCID = container.cid.substring(7, 15);
-        setOriginalCID(shortOriginalCID);
-      } else {
-        setOriginalCID('');
-      }
-      
-    } catch (err) {
-      console.error('Load failed:', err);
-      setError(`Load failed: ${(err as Error).message}`);
-    } finally {
-      setLoading(false);
-    }
-  };
 
   const handleSave = async () => {
     setLoading(true);
@@ -232,7 +193,6 @@ export default function PuzzleShapePage() {
           originalCID={originalCID}
           brightness={brightness}
           editMode={editMode}
-          onLoad={handleLoad}
           onSave={handleSave}
           onBrowseLibrary={handleBrowseLibrary}
           onBrightnessChange={setBrightness}
