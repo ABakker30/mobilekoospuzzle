@@ -4,6 +4,7 @@ import { Link } from 'react-router-dom';
 import ShapeEditor3D from '../components/shape/ShapeEditor3D';
 import ShapeToolbar from '../components/shape/ShapeToolbar';
 import LibraryBrowser from '../components/shape/LibraryBrowser';
+import SettingsModal, { AppSettings } from '../components/shape/SettingsModal';
 import { FCCCoord } from '../lib/coords/fcc';
 import { computeShortCID } from '../lib/cid';
 import { saveJSONFile } from '../services/files';
@@ -13,7 +14,6 @@ export default function PuzzleShapePage() {
   // Removed excessive logging to prevent console spam
   
   const [coordinates, setCoordinates] = useState<FCCCoord[]>([]);
-  const [brightness, setBrightness] = useState(1.8);
   const [editMode, setEditMode] = useState<'add' | 'delete'>('add');
   const [currentCID, setCurrentCID] = useState<string>('');
   const [originalCID, setOriginalCID] = useState<string>('');
@@ -21,6 +21,53 @@ export default function PuzzleShapePage() {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string>('');
   const [showLibraryBrowser, setShowLibraryBrowser] = useState(false);
+  const [showSettings, setShowSettings] = useState(false);
+  // Load settings from localStorage or use defaults
+  const loadSettings = (): AppSettings => {
+    try {
+      const savedSettings = localStorage.getItem('puzzleShapeSettings');
+      if (savedSettings) {
+        const parsed = JSON.parse(savedSettings);
+        // Validate that all required properties exist, merge with defaults if needed
+        return {
+          brightness: parsed.brightness ?? 1.8,
+          backgroundColor: parsed.backgroundColor ?? '#ffffff',
+          material: {
+            type: parsed.material?.type ?? 'paint',
+            color: parsed.material?.color ?? '#4a90e2',
+            metalness: parsed.material?.metalness ?? 0.0,
+            transparency: parsed.material?.transparency ?? 0.0,
+            reflectiveness: parsed.material?.reflectiveness ?? 0.2
+          },
+          camera: {
+            orthographic: parsed.camera?.orthographic ?? false,
+            focalLength: parsed.camera?.focalLength ?? 50
+          }
+        };
+      }
+    } catch (error) {
+      console.warn('Failed to load settings from localStorage:', error);
+    }
+    
+    // Return defaults if loading failed
+    return {
+      brightness: 1.8,
+      backgroundColor: '#ffffff',
+      material: {
+        type: 'paint',
+        color: '#4a90e2',
+        metalness: 0.0,
+        transparency: 0.0,
+        reflectiveness: 0.2
+      },
+      camera: {
+        orthographic: false,
+        focalLength: 50
+      }
+    };
+  };
+
+  const [settings, setSettings] = useState<AppSettings>(loadSettings);
   
   // Detect if this is a page reload and persist state
   useEffect(() => {
@@ -175,6 +222,29 @@ export default function PuzzleShapePage() {
     setShowLibraryBrowser(false);
   };
 
+  const handleSettings = () => {
+    setShowSettings(true);
+  };
+
+  const handleSettingsChange = (newSettings: AppSettings) => {
+    setSettings(newSettings);
+  };
+
+  // Save settings to localStorage whenever they change
+  useEffect(() => {
+    try {
+      localStorage.setItem('puzzleShapeSettings', JSON.stringify(settings));
+      console.log('Settings saved to localStorage');
+    } catch (error) {
+      console.warn('Failed to save settings to localStorage:', error);
+    }
+  }, [settings]);
+
+  const handleSettingsClose = () => {
+    setShowSettings(false);
+    // Controls will be re-enabled automatically through the settings effect
+  };
+
   return (
     <div style={{ 
       display: 'flex',
@@ -191,11 +261,10 @@ export default function PuzzleShapePage() {
           cellCount={coordinates.length}
           currentCID={currentCID}
           originalCID={originalCID}
-          brightness={brightness}
           editMode={editMode}
           onSave={handleSave}
           onBrowseLibrary={handleBrowseLibrary}
-          onBrightnessChange={setBrightness}
+          onSettings={handleSettings}
           onEditModeChange={setEditMode}
           loading={loading}
         />
@@ -204,11 +273,11 @@ export default function PuzzleShapePage() {
       <div style={{ 
         flex: 1, 
         position: 'relative',
-        backgroundColor: '#f0f0f0'
+        backgroundColor: '#f0f0f0' // Container background (not 3D scene)
       }}>
         <ShapeEditor3D
           coordinates={coordinates}
-          brightness={brightness}
+          settings={settings}
           editMode={editMode}
           onCoordinatesChange={setCoordinates}
         />
@@ -275,6 +344,15 @@ export default function PuzzleShapePage() {
           onContainerSelect={handleLibraryContainerSelect}
           onClose={handleLibraryClose}
           loading={loading}
+        />
+      )}
+
+      {/* Settings Modal */}
+      {showSettings && (
+        <SettingsModal
+          settings={settings}
+          onSettingsChange={handleSettingsChange}
+          onClose={handleSettingsClose}
         />
       )}
     </div>

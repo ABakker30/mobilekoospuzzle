@@ -5,11 +5,10 @@ interface ShapeToolbarProps {
   cellCount: number;
   currentCID: string;
   originalCID: string;
-  brightness: number;
   editMode: 'add' | 'delete';
   onSave: () => void;
   onBrowseLibrary: () => void;
-  onBrightnessChange: (brightness: number) => void;
+  onSettings: () => void;
   onEditModeChange: (mode: 'add' | 'delete') => void;
   loading?: boolean;
 }
@@ -18,11 +17,10 @@ export default function ShapeToolbar({
   cellCount,
   currentCID,
   originalCID,
-  brightness,
   editMode,
   onSave,
   onBrowseLibrary,
-  onBrightnessChange,
+  onSettings,
   onEditModeChange,
   loading = false
 }: ShapeToolbarProps) {
@@ -62,6 +60,27 @@ export default function ShapeToolbar({
             }}
           >
             Browse Library
+          </button>
+          
+          <button
+            onClick={onSettings}
+            disabled={loading}
+            style={{
+              padding: '8px 12px',
+              backgroundColor: '#6c757d',
+              color: 'white',
+              border: 'none',
+              borderRadius: '6px',
+              fontSize: '16px',
+              cursor: loading ? 'not-allowed' : 'pointer',
+              opacity: loading ? 0.6 : 1,
+              display: 'flex',
+              alignItems: 'center',
+              justifyContent: 'center'
+            }}
+            title="Settings"
+          >
+            ⚙️
           </button>
           
           <button
@@ -137,52 +156,15 @@ export default function ShapeToolbar({
         </button>
       </div>
 
-      {/* Bottom row - Brightness and CID */}
+      {/* Bottom row - CID */}
       <div style={{
         display: 'flex',
-        justifyContent: 'space-between',
+        justifyContent: 'flex-end',
         alignItems: 'center',
-        flexWrap: 'wrap',
-        gap: '12px'
+        gap: '8px',
+        fontSize: '12px'
       }}>
-        <div style={{
-          display: 'flex',
-          alignItems: 'center',
-          gap: '8px',
-          minWidth: '200px'
-        }}>
-          <label style={{ fontSize: '14px', fontWeight: '500', color: '#495057' }}>
-            Brightness:
-          </label>
-          <input
-            type="range"
-            min="0.5"
-            max="2.5"
-            step="0.1"
-            value={brightness}
-            onChange={(e) => onBrightnessChange(parseFloat(e.target.value))}
-            style={{
-              flex: 1,
-              minWidth: '100px',
-              height: '6px',
-              borderRadius: '3px',
-              background: '#ddd',
-              outline: 'none',
-              cursor: 'pointer'
-            }}
-          />
-          <span style={{ fontSize: '12px', color: '#6c757d', minWidth: '30px' }}>
-            {brightness.toFixed(1)}
-          </span>
-        </div>
-
-        <div style={{
-          display: 'flex',
-          alignItems: 'center',
-          gap: '8px',
-          fontSize: '12px'
-        }}>
-          <span style={{ color: '#495057', fontWeight: '500' }}>CID:</span>
+        <span style={{ color: '#495057', fontWeight: '500' }}>CID:</span>
           <code style={{
             backgroundColor: hasChanges ? '#fff3cd' : '#e9ecef',
             color: hasChanges ? '#856404' : '#495057',
@@ -202,7 +184,6 @@ export default function ShapeToolbar({
               (modified)
             </span>
           )}
-        </div>
       </div>
     </div>
   );

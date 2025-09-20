@@ -3,24 +3,25 @@ import React, { useEffect, useRef, useState } from 'react';
 import * as THREE from 'three';
 import { OrbitControls } from 'three/examples/jsm/controls/OrbitControls.js';
 import { FCCCoord, fccToWorld, worldToFCC, snapToFCCLattice, isValidFCCCoord, getFCCNeighbors, centerFCCCoords } from '../../lib/coords/fcc';
+import { AppSettings } from './SettingsModal';
 
 interface ShapeEditor3DProps {
   coordinates: FCCCoord[];
-  brightness: number;
+  settings: AppSettings;
   editMode: 'add' | 'delete';
   onCoordinatesChange: (coords: FCCCoord[]) => void;
 }
 
 export default function ShapeEditor3D({
   coordinates,
-  brightness,
+  settings,
   editMode,
   onCoordinatesChange
 }: ShapeEditor3DProps) {
   const instanceId = useRef(Math.random().toString(36).substr(2, 9));
   console.log(`ShapeEditor3D [${instanceId.current}]: Component render/re-render`, {
     coordinatesLength: coordinates.length,
-    brightness,
+    brightness: settings.brightness,
     editMode,
     timestamp: Date.now()
   });
@@ -28,12 +29,39 @@ export default function ShapeEditor3D({
   const canvasRef = useRef<HTMLCanvasElement>(null);
   const sceneRef = useRef<THREE.Scene>();
   const rendererRef = useRef<THREE.WebGLRenderer>();
-  const cameraRef = useRef<THREE.PerspectiveCamera>();
+  const cameraRef = useRef<THREE.PerspectiveCamera | THREE.OrthographicCamera>();
   const controlsRef = useRef<OrbitControls>();
   const spheresRef = useRef<THREE.Mesh[]>([]);
   const raycasterRef = useRef<THREE.Raycaster>();
   const mouseRef = useRef<THREE.Vector2>();
   // isDragging state removed - using OrbitControls now
+
+  // Helper function to convert focal length to FOV
+  const focalLengthToFOV = (focalLength: number): number => {
+    // Using 35mm full frame sensor height (24mm)
+    const sensorHeight = 24;
+    const fovRadians = 2 * Math.atan(sensorHeight / (2 * focalLength));
+    return fovRadians * (180 / Math.PI);
+  };
+
+  // Helper function to create camera based on settings
+  const createCamera = (width: number, height: number, orthographic: boolean, focalLength: number = 50) => {
+    if (orthographic) {
+      const aspect = width / height;
+      const frustumSize = 10;
+      return new THREE.OrthographicCamera(
+        frustumSize * aspect / -2,
+        frustumSize * aspect / 2,
+        frustumSize / 2,
+        frustumSize / -2,
+        0.1,
+        1000
+      );
+    } else {
+      const fov = focalLengthToFOV(focalLength);
+      return new THREE.PerspectiveCamera(fov, width / height, 0.1, 1000);
+    }
+  };
 
   // Initialize Three.js scene - only once
   useEffect(() => {
@@ -52,9 +80,9 @@ export default function ShapeEditor3D({
       console.log(`ShapeEditor3D [${instanceId.current}]: Initializing Three.js scene (should only happen once)`);
       
       const scene = new THREE.Scene();
-      scene.background = new THREE.Color(0xf0f0f0);
+      scene.background = new THREE.Color(0xffffff); // Default white background
       
-      const camera = new THREE.PerspectiveCamera(75, container.clientWidth / container.clientHeight, 0.1, 1000);
+      const camera = createCamera(container.clientWidth, container.clientHeight, settings.camera.orthographic, settings.camera.focalLength);
       camera.position.set(8, 8, 8);
       camera.lookAt(0, 0, 0);
 
@@ -105,18 +133,34 @@ export default function ShapeEditor3D({
     console.log('ShapeEditor3D: Canvas parent after renderer:', renderer.domElement.parentElement);
     console.log('ShapeEditor3D: Canvas bounds after renderer:', renderer.domElement.getBoundingClientRect());
 
-    // Add lights
-    const ambientLight = new THREE.AmbientLight(0x404040, 0.4);
+    // Add comprehensive lighting for even illumination from all sides
+    const ambientLight = new THREE.AmbientLight(0x404040, 0.6); // Increased ambient
     scene.add(ambientLight);
     
-    const directionalLight = new THREE.DirectionalLight(0xffffff, 0.8);
-    directionalLight.position.set(10, 10, 5);
-    directionalLight.castShadow = true;
-    directionalLight.shadow.mapSize.width = 2048;
-    directionalLight.shadow.mapSize.height = 2048;
-    scene.add(directionalLight);
-
-    // Grid and test cube removed for clean viewing experience
+    // Main directional light (top-front)
+    const mainLight = new THREE.DirectionalLight(0xffffff, 0.8);
+    mainLight.position.set(10, 10, 5);
+    mainLight.castShadow = true;
+    mainLight.shadow.mapSize.width = 2048;
+    mainLight.shadow.mapSize.height = 2048;
+    mainLight.shadow.camera.near = 0.5;
+    mainLight.shadow.camera.far = 500;
+    scene.add(mainLight);
+    
+    // Fill light (back-left)
+    const fillLight = new THREE.DirectionalLight(0xffffff, 0.4);
+    fillLight.position.set(-8, 5, -8);
+    scene.add(fillLight);
+    
+    // Rim light (right side)
+    const rimLight = new THREE.DirectionalLight(0xffffff, 0.3);
+    rimLight.position.set(8, 2, -5);
+    scene.add(rimLight);
+    
+    // Bottom light (subtle upward illumination)
+    const bottomLight = new THREE.DirectionalLight(0xffffff, 0.2);
+    bottomLight.position.set(0, -10, 0);
+    scene.add(bottomLight);
 
     // Setup camera controls
     const controls = new OrbitControls(camera, renderer.domElement);
@@ -220,12 +264,13 @@ export default function ShapeEditor3D({
       const worldPos = fccToWorld(coord);
       console.log(`ShapeEditor3D: FCC ${coord.x},${coord.y},${coord.z} -> World ${worldPos.x.toFixed(2)},${worldPos.y.toFixed(2)},${worldPos.z.toFixed(2)}`);
       
-      const material = new THREE.MeshPhongMaterial({ 
-        color: 0x4a90e2, // Original blue
-        transparent: false, // Solid spheres
-        shininess: 100, // High shininess for reflective look
-        specular: 0x222222, // Subtle specular highlights
-        reflectivity: 0.3 // Semi-reflective surface
+      // Create material based on current settings using StandardMaterial for proper PBR
+      const material = new THREE.MeshStandardMaterial({ 
+        color: parseInt(settings.material.color.replace('#', '0x')),
+        transparent: settings.material.transparency > 0,
+        opacity: 1 - settings.material.transparency,
+        metalness: settings.material.metalness,
+        roughness: 1 - settings.material.reflectiveness // Inverse relationship
       });
       
       const sphere = new THREE.Mesh(geometry, material);
@@ -279,15 +324,122 @@ export default function ShapeEditor3D({
     }
   }, [coordinates]);
 
-  // Update brightness
+  // Update lighting and materials based on settings
   useEffect(() => {
     if (!sceneRef.current) return;
     
+    // Update lighting brightness for all directional lights
     const lights = sceneRef.current.children.filter(child => child instanceof THREE.DirectionalLight);
-    lights.forEach(light => {
-      (light as THREE.DirectionalLight).intensity = brightness * 0.8;
+    lights.forEach((light, index) => {
+      const directionalLight = light as THREE.DirectionalLight;
+      // Scale intensity based on light type (main, fill, rim, bottom)
+      const baseIntensities = [0.8, 0.4, 0.3, 0.2]; // Main, fill, rim, bottom
+      directionalLight.intensity = settings.brightness * (baseIntensities[index] || 0.3);
     });
-  }, [brightness]);
+
+    // Update ambient light
+    const ambientLights = sceneRef.current.children.filter(child => child instanceof THREE.AmbientLight);
+    ambientLights.forEach(light => {
+      (light as THREE.AmbientLight).intensity = settings.brightness * 0.6;
+    });
+
+    // Update background color
+    if (rendererRef.current && sceneRef.current) {
+      const backgroundColor = new THREE.Color(settings.backgroundColor);
+      rendererRef.current.setClearColor(backgroundColor);
+      sceneRef.current.background = backgroundColor;
+    }
+
+    // Update camera type or focal length if needed
+    if (cameraRef.current && controlsRef.current && containerRef.current) {
+      const currentIsOrthographic = cameraRef.current instanceof THREE.OrthographicCamera;
+      const needsCameraRecreation = currentIsOrthographic !== settings.camera.orthographic;
+      
+      // Check if focal length changed for perspective camera
+      let needsFOVUpdate = false;
+      if (!settings.camera.orthographic && cameraRef.current instanceof THREE.PerspectiveCamera) {
+        const currentFOV = cameraRef.current.fov;
+        const expectedFOV = focalLengthToFOV(settings.camera.focalLength);
+        needsFOVUpdate = Math.abs(currentFOV - expectedFOV) > 0.1;
+      }
+      
+      if (needsCameraRecreation || needsFOVUpdate) {
+        // Store current camera position and target
+        const oldPosition = cameraRef.current.position.clone();
+        const oldTarget = controlsRef.current.target.clone();
+        
+        // Create new camera or update FOV
+        if (needsCameraRecreation) {
+          const newCamera = createCamera(
+            containerRef.current.clientWidth, 
+            containerRef.current.clientHeight, 
+            settings.camera.orthographic,
+            settings.camera.focalLength
+          );
+          newCamera.position.copy(oldPosition);
+          newCamera.lookAt(oldTarget);
+          
+          // Update references
+          cameraRef.current = newCamera;
+          controlsRef.current.object = newCamera;
+        } else if (needsFOVUpdate && cameraRef.current instanceof THREE.PerspectiveCamera) {
+          // Just update FOV for existing perspective camera
+          cameraRef.current.fov = focalLengthToFOV(settings.camera.focalLength);
+          cameraRef.current.updateProjectionMatrix();
+        }
+        
+        controlsRef.current.target.copy(oldTarget);
+        controlsRef.current.update();
+        
+        // Update renderer
+        if (rendererRef.current) {
+          rendererRef.current.render(sceneRef.current!, cameraRef.current);
+        }
+      }
+    }
+
+    // Ensure controls are always enabled and properly configured
+    if (controlsRef.current) {
+      controlsRef.current.enabled = true;
+      controlsRef.current.enableDamping = true;
+      controlsRef.current.dampingFactor = 0.05;
+      controlsRef.current.screenSpacePanning = false;
+      controlsRef.current.minDistance = 2;
+      controlsRef.current.maxDistance = 50;
+      controlsRef.current.maxPolarAngle = Math.PI;
+      controlsRef.current.update();
+      
+      // Make canvas focusable but don't auto-focus to avoid camera jumps
+      if (rendererRef.current && rendererRef.current.domElement) {
+        const canvas = rendererRef.current.domElement;
+        canvas.tabIndex = 0; // Make canvas focusable when user clicks
+        canvas.style.outline = 'none'; // Remove focus outline
+      }
+    }
+
+    // Update all sphere materials in real-time
+    spheresRef.current.forEach(sphere => {
+      if (sphere.material instanceof THREE.MeshStandardMaterial) {
+        const material = sphere.material;
+        
+        // Update color
+        material.color.setHex(parseInt(settings.material.color.replace('#', '0x')));
+        
+        // Update transparency
+        material.transparent = settings.material.transparency > 0;
+        material.opacity = 1 - settings.material.transparency;
+        
+        // Update metalness directly from slider
+        material.metalness = settings.material.metalness;
+        
+        // Update roughness from reflectiveness (inverse relationship)
+        material.roughness = 1 - settings.material.reflectiveness;
+        
+        // Mark material as needing update
+        material.needsUpdate = true;
+      }
+    });
+  }, [settings]);
 
   // Pointer event handlers removed - using OrbitControls for camera interaction
   // Add/delete functionality will be implemented later with proper click detection
