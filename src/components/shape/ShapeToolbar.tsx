@@ -4,12 +4,13 @@ import React from 'react';
 interface ShapeToolbarProps {
   cellCount: number;
   currentCID: string;
-  originalCID?: string;
+  originalCID: string;
   brightness: number;
   editMode: 'add' | 'delete';
   onLoad: () => void;
   onSave: () => void;
-  onBrightnessChange: (value: number) => void;
+  onBrowseLibrary: () => void;
+  onBrightnessChange: (brightness: number) => void;
   onEditModeChange: (mode: 'add' | 'delete') => void;
   loading?: boolean;
 }
@@ -22,6 +23,7 @@ export default function ShapeToolbar({
   editMode,
   onLoad,
   onSave,
+  onBrowseLibrary,
   onBrightnessChange,
   onEditModeChange,
   loading = false
@@ -45,7 +47,7 @@ export default function ShapeToolbar({
         flexWrap: 'wrap',
         gap: '8px'
       }}>
-        <div style={{ display: 'flex', gap: '8px' }}>
+        <div style={{ display: 'flex', gap: '8px', flexWrap: 'wrap' }}>
           <button
             onClick={onLoad}
             disabled={loading}
@@ -62,6 +64,24 @@ export default function ShapeToolbar({
             }}
           >
             {loading ? 'Loading...' : 'Load'}
+          </button>
+          
+          <button
+            onClick={onBrowseLibrary}
+            disabled={loading}
+            style={{
+              padding: '8px 16px',
+              backgroundColor: '#17a2b8',
+              color: 'white',
+              border: 'none',
+              borderRadius: '6px',
+              fontSize: '14px',
+              fontWeight: '500',
+              cursor: loading ? 'not-allowed' : 'pointer',
+              opacity: loading ? 0.6 : 1
+            }}
+          >
+            Browse Library
           </button>
           
           <button

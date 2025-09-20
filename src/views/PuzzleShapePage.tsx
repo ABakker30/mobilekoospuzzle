@@ -3,13 +3,14 @@ import React, { useState, useEffect } from 'react';
 import { Link } from 'react-router-dom';
 import ShapeEditor3D from '../components/shape/ShapeEditor3D';
 import ShapeToolbar from '../components/shape/ShapeToolbar';
+import LibraryBrowser from '../components/shape/LibraryBrowser';
 import { FCCCoord } from '../lib/coords/fcc';
 import { computeShortCID } from '../lib/cid';
 import { loadJSONFile, saveJSONFile } from '../services/files';
 import { validateContainerV1, containerToV1Format } from '../lib/guards/containerV1';
 
 export default function PuzzleShapePage() {
-  console.log('PuzzleShapePage: Component render/re-render', Date.now());
+  // Removed excessive logging to prevent console spam
   
   const [coordinates, setCoordinates] = useState<FCCCoord[]>([]);
   const [brightness, setBrightness] = useState(1.8);
@@ -19,6 +20,7 @@ export default function PuzzleShapePage() {
   const [containerName, setContainerName] = useState<string>('');
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string>('');
+  const [showLibraryBrowser, setShowLibraryBrowser] = useState(false);
   
   // Detect if this is a page reload and persist state
   useEffect(() => {
@@ -68,23 +70,15 @@ export default function PuzzleShapePage() {
       window.removeEventListener('beforeunload', handleBeforeUnload);
       window.removeEventListener('unload', handleUnload);
     };
-  }, [coordinates]);
+  }, []); // Only run once on mount, not when coordinates change
   
-  console.log('PuzzleShapePage: Current state', {
-    coordinatesLength: coordinates.length,
-    currentCID,
-    loading,
-    error: !!error
-  });
+  // Removed state logging to prevent console spam
 
   // Update CID when coordinates change
   useEffect(() => {
-    console.log('PuzzleShapePage: CID effect triggered, coordinates length:', coordinates.length);
-    
     const updateCID = async () => {
       try {
         const cid = await computeShortCID(coordinates);
-        console.log('PuzzleShapePage: CID computed:', cid);
         setCurrentCID(cid);
       } catch (err) {
         console.error('Failed to compute CID:', err);
@@ -104,22 +98,22 @@ export default function PuzzleShapePage() {
         originalCID
       };
       sessionStorage.setItem('puzzleShapeState', JSON.stringify(state));
-      console.log('PuzzleShapePage: State saved to sessionStorage');
     }
   }, [coordinates, containerName, originalCID]);
 
   const handleLoad = async () => {
-    console.log('PuzzleShapePage: handleLoad called');
     setLoading(true);
     setError('');
     
+    // Clear all existing data first
+    setCoordinates([]);
+    setContainerName('');
+    setCurrentCID('');
+    setOriginalCID('');
+    
     try {
-      console.log('PuzzleShapePage: About to call loadJSONFile');
       const data = await loadJSONFile();
-      console.log('PuzzleShapePage: loadJSONFile returned:', data);
-      
       const validation = validateContainerV1(data);
-      console.log('PuzzleShapePage: Validation result:', validation);
       
       if (!validation.valid) {
         throw new Error(validation.error);
@@ -127,8 +121,6 @@ export default function PuzzleShapePage() {
       
       const container = validation.container!;
       const fccCoords: FCCCoord[] = container.cells!.map(([x, y, z]) => ({ x, y, z }));
-      
-      console.log('PuzzleShapePage: Loaded container with', fccCoords.length, 'coordinates:', fccCoords);
       
       setCoordinates(fccCoords);
       setContainerName(container.name || 'Untitled Container');
@@ -141,13 +133,10 @@ export default function PuzzleShapePage() {
         setOriginalCID('');
       }
       
-      console.log('PuzzleShapePage: Load completed successfully');
-      
     } catch (err) {
-      console.error('PuzzleShapePage: Load error:', err);
+      console.error('Load failed:', err);
       setError(`Load failed: ${(err as Error).message}`);
     } finally {
-      console.log('PuzzleShapePage: Setting loading to false');
       setLoading(false);
     }
   };
@@ -186,6 +175,45 @@ export default function PuzzleShapePage() {
     }
   };
 
+  const handleBrowseLibrary = () => {
+    setShowLibraryBrowser(true);
+  };
+
+  const handleLibraryContainerSelect = (container: any, name: string) => {
+    // Clear all existing data first
+    setCoordinates([]);
+    setContainerName('');
+    setCurrentCID('');
+    setOriginalCID('');
+    setError('');
+    
+    // Process the container the same way as file loading
+    const validation = validateContainerV1(container);
+    
+    if (!validation.valid) {
+      setError(`Invalid container: ${validation.error}`);
+      return;
+    }
+    
+    const validContainer = validation.container!;
+    const fccCoords: FCCCoord[] = validContainer.cells!.map(([x, y, z]) => ({ x, y, z }));
+    
+    setCoordinates(fccCoords);
+    setContainerName(name.replace('.fcc.json', ''));
+    
+    // Set original CID for comparison
+    if (validContainer.cid) {
+      const shortOriginalCID = validContainer.cid.substring(7, 15);
+      setOriginalCID(shortOriginalCID);
+    } else {
+      setOriginalCID('');
+    }
+  };
+
+  const handleLibraryClose = () => {
+    setShowLibraryBrowser(false);
+  };
+
   return (
     <div style={{ 
       display: 'flex',
@@ -206,6 +234,7 @@ export default function PuzzleShapePage() {
           editMode={editMode}
           onLoad={handleLoad}
           onSave={handleSave}
+          onBrowseLibrary={handleBrowseLibrary}
           onBrightnessChange={setBrightness}
           onEditModeChange={setEditMode}
           loading={loading}
@@ -278,6 +307,15 @@ export default function PuzzleShapePage() {
             ×
           </button>
         </div>
+      )}
+      
+      {/* Library Browser Modal */}
+      {showLibraryBrowser && (
+        <LibraryBrowser
+          onContainerSelect={handleLibraryContainerSelect}
+          onClose={handleLibraryClose}
+          loading={loading}
+        />
       )}
     </div>
   );
