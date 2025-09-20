@@ -1,6 +1,23 @@
-# React + Vite
+# Koos Puzzle - Mobile PWA
 
-This template provides a minimal setup to get React working in Vite with HMR and some ESLint rules.
+Mobile-first Progressive Web App for visualizing and interacting with Koos puzzle solutions, built with React + Vite + Three.js.
+
+## Features
+- 🎮 **Interactive 3D Puzzle Visualization** - Three.js powered container and piece rendering
+- 📱 **Mobile-First PWA** - Optimized for touch interaction and offline use
+- 🔄 **Hot Reloading** - Instant development feedback on both PC and mobile
+- 📊 **Comprehensive Container Collection** - 33+ puzzle shapes ready for visualization
+- 🏗️ **Clean Architecture** - Separation between UI (this repo) and engine (upstream)
+
+## Quick Start
+```bash
+npm run dev -- --host
+```
+- **Local**: http://localhost:5173/
+- **Mobile**: http://192.168.4.24:5173/
+
+## Development
+This project follows a structured development workflow with scoped sessions and comprehensive documentation. See `docs/` for complete architecture and contributing guidelines.
 
 Currently, two official plugins are available:
 
