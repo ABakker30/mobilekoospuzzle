@@ -1,0 +1,14 @@
+# Code Owners - Require Review for Critical Areas
+
+# Transform pipeline - coordinate system changes need careful review
+src/lib/coords/** @ABakker30
+
+# Architecture documentation - structural changes need approval  
+docs/ARCHITECTURE.md @ABakker30
+docs/TRANSFORM_PIPELINE.md @ABakker30
+docs/DATA_FORMATS.md @ABakker30
+
+# Project governance documents
+docs/CONTRIBUTING.md @ABakker30
+docs/ROADMAP.md @ABakker30
+.github/ @ABakker30
