@@ -33,6 +33,13 @@ jobs:
       - name: Build
         run: npm run build
         
+      - name: List build output
+        run: |
+          echo "Contents of dist directory:"
+          ls -la dist/
+          echo "Built index.html content:"
+          head -20 dist/index.html
+        
       - name: Setup Pages
         uses: actions/configure-pages@v4
         
