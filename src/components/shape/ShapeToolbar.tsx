@@ -6,10 +6,12 @@ interface ShapeToolbarProps {
   currentCID: string;
   originalCID: string;
   editMode: 'add' | 'delete';
+  editingEnabled: boolean;
   onSave: () => void;
   onBrowseLibrary: () => void;
   onSettings: () => void;
   onEditModeChange: (mode: 'add' | 'delete') => void;
+  onEditingEnabledChange: (enabled: boolean) => void;
   loading?: boolean;
 }
 
@@ -18,10 +20,12 @@ export default function ShapeToolbar({
   currentCID,
   originalCID,
   editMode,
+  editingEnabled,
   onSave,
   onBrowseLibrary,
   onSettings,
   onEditModeChange,
+  onEditingEnabledChange,
   loading = false
 }: ShapeToolbarProps) {
   const hasChanges = originalCID && currentCID !== originalCID;
@@ -115,45 +119,67 @@ export default function ShapeToolbar({
         </div>
       </div>
 
-      {/* Middle row - Edit mode buttons */}
+      {/* Second row - Edit mode controls */}
       <div style={{
         display: 'flex',
-        justifyContent: 'center',
-        gap: '4px'
+        justifyContent: 'space-between',
+        alignItems: 'center',
+        flexWrap: 'wrap',
+        gap: '12px'
       }}>
-        <button
-          onClick={() => onEditModeChange('add')}
-          style={{
-            padding: '10px 20px',
-            backgroundColor: editMode === 'add' ? '#28a745' : '#e9ecef',
-            color: editMode === 'add' ? 'white' : '#495057',
-            border: 'none',
-            borderRadius: '6px 0 0 6px',
-            fontSize: '16px',
-            fontWeight: '500',
-            cursor: 'pointer',
-            minWidth: '80px'
-          }}
-        >
-          + Add
-        </button>
-        
-        <button
-          onClick={() => onEditModeChange('delete')}
-          style={{
-            padding: '10px 20px',
-            backgroundColor: editMode === 'delete' ? '#dc3545' : '#e9ecef',
-            color: editMode === 'delete' ? 'white' : '#495057',
-            border: 'none',
-            borderRadius: '0 6px 6px 0',
-            fontSize: '16px',
-            fontWeight: '500',
-            cursor: 'pointer',
-            minWidth: '80px'
-          }}
-        >
-          - Delete
-        </button>
+        {/* Edit Mode Toggle */}
+        <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+          <label style={{ display: 'flex', alignItems: 'center', gap: '8px', cursor: 'pointer' }}>
+            <input
+              type="checkbox"
+              checked={editingEnabled}
+              onChange={(e) => onEditingEnabledChange(e.target.checked)}
+              style={{ cursor: 'pointer' }}
+            />
+            <span style={{ fontSize: '14px', fontWeight: '500', color: '#495057' }}>
+              Edit Mode
+            </span>
+          </label>
+        </div>
+
+        {/* Add/Delete buttons - only show when editing is enabled */}
+        {editingEnabled && (
+          <div style={{ display: 'flex', gap: '8px' }}>
+            <button
+              onClick={() => onEditModeChange('add')}
+              style={{
+                padding: '8px 16px',
+                backgroundColor: editMode === 'add' ? '#28a745' : '#6c757d',
+                color: 'white',
+                border: 'none',
+                borderRadius: '6px',
+                fontSize: '16px',
+                fontWeight: '500',
+                cursor: 'pointer',
+                minWidth: '80px'
+              }}
+            >
+              + Add
+            </button>
+            
+            <button
+              onClick={() => onEditModeChange('delete')}
+              style={{
+                padding: '8px 16px',
+                backgroundColor: editMode === 'delete' ? '#dc3545' : '#6c757d',
+                color: 'white',
+                border: 'none',
+                borderRadius: '6px',
+                fontSize: '16px',
+                fontWeight: '500',
+                cursor: 'pointer',
+                minWidth: '80px'
+              }}
+            >
+              - Delete
+            </button>
+          </div>
+        )}
       </div>
 
       {/* Bottom row - CID */}

@@ -9,6 +9,7 @@ interface ShapeEditor3DProps {
   coordinates: FCCCoord[];
   settings: AppSettings;
   editMode: 'add' | 'delete';
+  editingEnabled: boolean;
   onCoordinatesChange: (coords: FCCCoord[]) => void;
 }
 
@@ -16,6 +17,7 @@ export default function ShapeEditor3D({
   coordinates,
   settings,
   editMode,
+  editingEnabled,
   onCoordinatesChange
 }: ShapeEditor3DProps) {
   const instanceId = useRef(Math.random().toString(36).substr(2, 9));
@@ -34,7 +36,11 @@ export default function ShapeEditor3D({
   const spheresRef = useRef<THREE.Mesh[]>([]);
   const raycasterRef = useRef<THREE.Raycaster>();
   const mouseRef = useRef<THREE.Vector2>();
-  // isDragging state removed - using OrbitControls now
+  const previewSphereRef = useRef<THREE.Mesh | null>(null);
+  const hoveredSphereRef = useRef<THREE.Mesh | null>(null);
+  const originalMaterialRef = useRef<THREE.Material | null>(null);
+  const [isMouseDown, setIsMouseDown] = useState(false);
+  const [mouseMoved, setMouseMoved] = useState(false);
 
   // Helper function to convert focal length to FOV
   const focalLengthToFOV = (focalLength: number): number => {
@@ -60,6 +66,35 @@ export default function ShapeEditor3D({
     } else {
       const fov = focalLengthToFOV(focalLength);
       return new THREE.PerspectiveCamera(fov, width / height, 0.1, 1000);
+    }
+  };
+
+  // Helper function to create preview sphere
+  const createPreviewSphere = () => {
+    const geometry = new THREE.SphereGeometry(0.28, 32, 24);
+    const material = new THREE.MeshStandardMaterial({
+      color: 0x00ff00, // Green for add mode
+      transparent: true,
+      opacity: 0.5,
+      metalness: 0.0,
+      roughness: 0.8
+    });
+    return new THREE.Mesh(geometry, material);
+  };
+
+  // Helper function to clear all hover effects
+  const clearHoverEffects = () => {
+    // Remove preview sphere
+    if (previewSphereRef.current && sceneRef.current) {
+      sceneRef.current.remove(previewSphereRef.current);
+      previewSphereRef.current = null;
+    }
+    
+    // Restore original material for hovered sphere
+    if (hoveredSphereRef.current && originalMaterialRef.current) {
+      hoveredSphereRef.current.material = originalMaterialRef.current;
+      hoveredSphereRef.current = null;
+      originalMaterialRef.current = null;
     }
   };
 
@@ -285,43 +320,7 @@ export default function ShapeEditor3D({
       spheresRef.current.push(sphere);
     });
 
-    // Auto-fit camera to view all spheres
-    if (centeredCoords.length > 0) {
-      const worldPositions = centeredCoords.map(fccToWorld);
-      const box = new THREE.Box3();
-      worldPositions.forEach(pos => {
-        box.expandByPoint(new THREE.Vector3(pos.x, pos.y, pos.z));
-      });
-      
-      const center = box.getCenter(new THREE.Vector3());
-      const size = box.getSize(new THREE.Vector3());
-      const maxDim = Math.max(size.x, size.y, size.z);
-      
-      // Position camera to view all spheres using OrbitControls
-      const distance = Math.max(maxDim * 3.0, 5.0); // Ensure minimum distance
-      const cameraPos = {
-        x: center.x + distance * 0.7,
-        y: center.y + distance * 0.7,
-        z: center.z + distance * 0.7
-      };
-      
-      console.log('ShapeEditor3D: Camera positioned at:', 
-        `(${cameraPos.x.toFixed(2)}, ${cameraPos.y.toFixed(2)}, ${cameraPos.z.toFixed(2)})`,
-        'looking at:', 
-        `(${center.x.toFixed(2)}, ${center.y.toFixed(2)}, ${center.z.toFixed(2)})`,
-        'distance:', distance.toFixed(2));
-      
-      // Update camera and controls target
-      cameraRef.current.position.set(cameraPos.x, cameraPos.y, cameraPos.z);
-      controlsRef.current!.target.copy(center);
-      controlsRef.current!.update();
-    } else {
-      // Fallback camera position if no coordinates
-      console.log('ShapeEditor3D: Using fallback camera position');
-      cameraRef.current.position.set(8, 8, 8);
-      controlsRef.current!.target.set(0, 0, 0);
-      controlsRef.current!.update();
-    }
+    // Camera position is controlled by user only - no automatic repositioning
   }, [coordinates]);
 
   // Update lighting and materials based on settings
@@ -441,19 +440,245 @@ export default function ShapeEditor3D({
     });
   }, [settings]);
 
-  // Pointer event handlers removed - using OrbitControls for camera interaction
-  // Add/delete functionality will be implemented later with proper click detection
+  // Mouse event handlers for add/delete functionality
+  const handleMouseDown = (event: React.MouseEvent) => {
+    if (!editingEnabled) return;
+    
+    setIsMouseDown(true);
+    setMouseMoved(false);
+  };
+
+  const handleMouseMove = (event: React.MouseEvent) => {
+    if (!editingEnabled) {
+      clearHoverEffects();
+      return;
+    }
+
+    if (isMouseDown) {
+      setMouseMoved(true);
+      return;
+    }
+
+    // Get mouse position for raycasting
+    const canvas = rendererRef.current?.domElement;
+    if (!canvas || !sceneRef.current || !cameraRef.current) return;
+
+    const rect = canvas.getBoundingClientRect();
+    const mouse = new THREE.Vector2();
+    mouse.x = ((event.clientX - rect.left) / rect.width) * 2 - 1;
+    mouse.y = -((event.clientY - rect.top) / rect.height) * 2 + 1;
+
+    const raycaster = new THREE.Raycaster();
+    raycaster.setFromCamera(mouse, cameraRef.current);
+
+    // Clear previous hover effects
+    clearHoverEffects();
+
+    if (editMode === 'delete') {
+      // DELETE MODE: Only highlight existing spheres for deletion
+      const intersects = raycaster.intersectObjects(spheresRef.current);
+      if (intersects.length > 0) {
+        const hoveredSphere = intersects[0].object as THREE.Mesh;
+        
+        // Store original material and make sphere semi-transparent red
+        originalMaterialRef.current = hoveredSphere.material;
+        const deleteMaterial = new THREE.MeshStandardMaterial({
+          color: 0xff0000, // Red
+          transparent: true,
+          opacity: 0.5,
+          metalness: settings.material.metalness,
+          roughness: 1 - settings.material.reflectiveness
+        });
+        
+        hoveredSphere.material = deleteMaterial;
+        hoveredSphereRef.current = hoveredSphere;
+      }
+    } else if (editMode === 'add') {
+      // ADD MODE: Show green preview spheres at valid neighbor positions only
+      if (coordinates.length === 0) {
+        // First cell - can be placed anywhere
+        const plane = new THREE.Plane(new THREE.Vector3(0, 0, 1), 0);
+        const intersectPoint = new THREE.Vector3();
+        if (raycaster.ray.intersectPlane(plane, intersectPoint)) {
+          const fccCoord = worldToFCC(intersectPoint);
+          const snappedCoord = snapToFCCLattice(fccCoord);
+          
+          const previewSphere = createPreviewSphere();
+          const worldPos = fccToWorld(snappedCoord);
+          previewSphere.position.set(worldPos.x, worldPos.y, worldPos.z);
+          sceneRef.current.add(previewSphere);
+          previewSphereRef.current = previewSphere;
+        }
+      } else {
+        // Find all valid neighbor positions (adjacent to existing cells)
+        const validNeighbors: FCCCoord[] = [];
+        
+        coordinates.forEach(coord => {
+          const neighbors = getFCCNeighbors(coord);
+          neighbors.forEach(neighbor => {
+            // Check if this neighbor position is empty
+            const exists = coordinates.some(existingCoord => 
+              existingCoord.x === neighbor.x && 
+              existingCoord.y === neighbor.y && 
+              existingCoord.z === neighbor.z
+            );
+            
+            // Check if we already added this neighbor to the list
+            const alreadyInList = validNeighbors.some(validNeighbor =>
+              validNeighbor.x === neighbor.x &&
+              validNeighbor.y === neighbor.y &&
+              validNeighbor.z === neighbor.z
+            );
+            
+            if (!exists && !alreadyInList) {
+              validNeighbors.push(neighbor);
+            }
+          });
+        });
+
+        // Find the closest valid neighbor to the mouse ray
+        let closestNeighbor: FCCCoord | null = null;
+        let closestDistance = Infinity;
+
+        validNeighbors.forEach(neighbor => {
+          const worldPos = fccToWorld(neighbor);
+          const neighborPoint = new THREE.Vector3(worldPos.x, worldPos.y, worldPos.z);
+          const distance = raycaster.ray.distanceToPoint(neighborPoint);
+          
+          if (distance < closestDistance && distance < 1.0) { // Within reasonable distance
+            closestDistance = distance;
+            closestNeighbor = neighbor;
+          }
+        });
+
+        // Show preview sphere at the closest valid neighbor position
+        if (closestNeighbor) {
+          const previewSphere = createPreviewSphere();
+          const worldPos = fccToWorld(closestNeighbor);
+          previewSphere.position.set(worldPos.x, worldPos.y, worldPos.z);
+          sceneRef.current.add(previewSphere);
+          previewSphereRef.current = previewSphere;
+        }
+      }
+    }
+  };
+
+  const handleMouseUp = (event: React.MouseEvent) => {
+    if (!editingEnabled || !isMouseDown || mouseMoved) {
+      setIsMouseDown(false);
+      setMouseMoved(false);
+      return;
+    }
+
+    // Only process click if mouse didn't move (not a drag)
+    const canvas = rendererRef.current?.domElement;
+    if (!canvas || !sceneRef.current || !cameraRef.current) return;
+
+    const rect = canvas.getBoundingClientRect();
+    const mouse = new THREE.Vector2();
+    mouse.x = ((event.clientX - rect.left) / rect.width) * 2 - 1;
+    mouse.y = -((event.clientY - rect.top) / rect.height) * 2 + 1;
+
+    const raycaster = new THREE.Raycaster();
+    raycaster.setFromCamera(mouse, cameraRef.current);
+
+    if (editMode === 'delete') {
+      // Delete mode - check for sphere intersections
+      const intersects = raycaster.intersectObjects(spheresRef.current);
+      if (intersects.length > 0) {
+        const clickedSphere = intersects[0].object as THREE.Mesh;
+        const fccCoord = (clickedSphere as any).fccCoord;
+        
+        if (fccCoord) {
+          // Remove the coordinate
+          const newCoordinates = coordinates.filter(coord => 
+            !(coord.x === fccCoord.x && coord.y === fccCoord.y && coord.z === fccCoord.z)
+          );
+          onCoordinatesChange(newCoordinates);
+        }
+      }
+    } else if (editMode === 'add') {
+      // Add mode - find nearest FCC lattice point
+      const intersects = raycaster.intersectObjects(spheresRef.current);
+      
+      if (intersects.length > 0) {
+        // Click on existing sphere - find adjacent FCC positions
+        const clickedSphere = intersects[0].object as THREE.Mesh;
+        const fccCoord = (clickedSphere as any).fccCoord;
+        
+        if (fccCoord) {
+          const neighbors = getFCCNeighbors(fccCoord);
+          // Find the first neighbor that doesn't already exist
+          for (const neighbor of neighbors) {
+            const exists = coordinates.some(coord => 
+              coord.x === neighbor.x && coord.y === neighbor.y && coord.z === neighbor.z
+            );
+            if (!exists) {
+              onCoordinatesChange([...coordinates, neighbor]);
+              break;
+            }
+          }
+        }
+      } else {
+        // Click on empty space - add at nearest lattice point
+        // Cast ray to a plane at z=0 for simplicity
+        const plane = new THREE.Plane(new THREE.Vector3(0, 0, 1), 0);
+        const intersectPoint = new THREE.Vector3();
+        if (raycaster.ray.intersectPlane(plane, intersectPoint)) {
+          const fccCoord = worldToFCC(intersectPoint);
+          const snappedCoord = snapToFCCLattice(fccCoord);
+          
+          // Check if this position already exists
+          const exists = coordinates.some(coord => 
+            coord.x === snappedCoord.x && coord.y === snappedCoord.y && coord.z === snappedCoord.z
+          );
+          
+          if (!exists && coordinates.length > 0) {
+            // Check if the new cell connects to existing structure
+            const neighbors = getFCCNeighbors(snappedCoord);
+            const hasConnection = neighbors.some(neighbor =>
+              coordinates.some(coord => 
+                coord.x === neighbor.x && coord.y === neighbor.y && coord.z === neighbor.z
+              )
+            );
+            
+            if (hasConnection) {
+              onCoordinatesChange([...coordinates, snappedCoord]);
+            }
+          } else if (coordinates.length === 0) {
+            // First cell can be placed anywhere
+            onCoordinatesChange([snappedCoord]);
+          }
+        }
+      }
+    }
+
+    setIsMouseDown(false);
+    setMouseMoved(false);
+  };
+
+  const handleMouseLeave = () => {
+    // Clear all hover effects when mouse leaves the canvas
+    clearHoverEffects();
+    setIsMouseDown(false);
+    setMouseMoved(false);
+  };
 
   return (
     <div 
       ref={containerRef}
+      onMouseDown={handleMouseDown}
+      onMouseMove={handleMouseMove}
+      onMouseUp={handleMouseUp}
+      onMouseLeave={handleMouseLeave}
       style={{
         position: 'absolute',
         top: 0,
         left: 0,
         right: 0,
         bottom: 0,
-        backgroundColor: '#f0f0f0'
+        overflow: 'hidden',
+        cursor: editingEnabled ? (editMode === 'add' ? 'crosshair' : 'pointer') : 'default'
       }}
     />
   );

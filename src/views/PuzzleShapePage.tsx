@@ -15,6 +15,7 @@ export default function PuzzleShapePage() {
   
   const [coordinates, setCoordinates] = useState<FCCCoord[]>([]);
   const [editMode, setEditMode] = useState<'add' | 'delete'>('add');
+  const [editingEnabled, setEditingEnabled] = useState(false);
   const [currentCID, setCurrentCID] = useState<string>('');
   const [originalCID, setOriginalCID] = useState<string>('');
   const [containerName, setContainerName] = useState<string>('');
@@ -262,10 +263,12 @@ export default function PuzzleShapePage() {
           currentCID={currentCID}
           originalCID={originalCID}
           editMode={editMode}
+          editingEnabled={editingEnabled}
           onSave={handleSave}
           onBrowseLibrary={handleBrowseLibrary}
           onSettings={handleSettings}
           onEditModeChange={setEditMode}
+          onEditingEnabledChange={setEditingEnabled}
           loading={loading}
         />
       </div>
@@ -279,6 +282,7 @@ export default function PuzzleShapePage() {
           coordinates={coordinates}
           settings={settings}
           editMode={editMode}
+          editingEnabled={editingEnabled}
           onCoordinatesChange={setCoordinates}
         />
       </div>
