@@ -14,6 +14,11 @@
 |-------------|--------|--------|
 | `data/examples/containers/tiny_4.fcc.json` | `tests/data/containers/tiny_4.fcc.json` | b05799fdd335a046e817e36f5b3a9bce2aa04346 |
 | `data/examples/containers/tiny_6.fcc.json` | `tests/data/containers/tiny_6.fcc.json` | 8582badeca0bb1b315343d9e50f75294957847ab |
+| `data/examples/containers/tiny_20.fcc.json` | `tests/data/containers/tiny_20.fcc.json` | 41824d7b5fa8dbd531815fe7df6a4d1d2998a596 |
+| `data/examples/containers/tiny_24.fcc.json` | `tests/data/containers/tiny_24.fcc.json` | 2be49f5fd0a97e3795f492398da4d0dd958c2418 |
+| `data/examples/containers/tiny_32.fcc.json` | `tests/data/containers/tiny_32.fcc.json` | f6e71e0c98d695eb0f886d80d7ab460e463137ef |
+| `data/examples/containers/box16.fcc.json` | `tests/data/containers/box16.fcc.json` | 39917834721ef75bb01d9f3a391ef9b493ca83f1 |
+| `data/examples/containers/pyramid16.fcc.json` | `tests/data/containers/pyramid16.fcc.json` | ecd746582c123b6c73c0fe43d32c0283c5cb0b7a |
 
 ### Pieces
 | Destination | Source | SHA256 |
@@ -37,7 +42,8 @@ Files are exact copies with attribution headers added where appropriate.
 - **Piece Format**: See upstream `tests/data/pieces/` examples
 
 ## Notes
-- Only minimal reference set imported (2 containers, 1 piece library)
+- Complete container set imported (7 containers: tiny_4, tiny_6, tiny_20, tiny_24, tiny_32, box16, pyramid16)
+- All containers are FCC v1 format from upstream test suite
 - Status and event files are examples based on schema documentation
 - No engine code or algorithms imported
 - All files maintain upstream attribution and licensing

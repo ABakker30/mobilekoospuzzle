@@ -19,10 +19,15 @@ All data files in this directory are copied from the authoritative source:
 ## File Inventory
 
 ### Containers (FCC v1 Format)
-| File | Source | Description |
-|------|--------|-------------|
-| `tiny_4.fcc.json` | `tests/data/containers/tiny_4.fcc.json` | 4-cell container (used in README examples) |
-| `tiny_6.fcc.json` | `tests/data/containers/tiny_6.fcc.json` | 6-cell container for testing |
+| File | Source | Description | Volume |
+|------|--------|-------------|---------|
+| `tiny_4.fcc.json` | `tests/data/containers/tiny_4.fcc.json` | 4-cell container (used in README examples) | 4 |
+| `tiny_6.fcc.json` | `tests/data/containers/tiny_6.fcc.json` | 6-cell container for testing | 6 |
+| `tiny_20.fcc.json` | `tests/data/containers/tiny_20.fcc.json` | 20-cell elongated container | 20 |
+| `tiny_24.fcc.json` | `tests/data/containers/tiny_24.fcc.json` | 24-cell elongated container | 24 |
+| `tiny_32.fcc.json` | `tests/data/containers/tiny_32.fcc.json` | 32-cell elongated container | 32 |
+| `box16.fcc.json` | `tests/data/containers/box16.fcc.json` | 16-unit box container (4x4 grid) | 16 |
+| `pyramid16.fcc.json` | `tests/data/containers/pyramid16.fcc.json` | 16-unit pyramid container (3D shape) | 16 |
 
 ### Pieces (FCC v1 Format)  
 | File | Source | Description |
