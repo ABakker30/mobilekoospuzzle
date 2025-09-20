@@ -12,9 +12,10 @@ export interface LibraryManifest {
   items: LibraryItem[];
 }
 
-// GitHub raw content URL as fallback until GitHub Pages is properly deployed
-// This will work immediately since the files are already in the repository
-const LIBRARY_BASE_URL = 'https://raw.githubusercontent.com/ABakker30/mobilekoospuzzle/main/public';
+// Use GitHub Pages URL for production, fallback to raw GitHub for development
+const LIBRARY_BASE_URL = window.location.hostname === 'localhost'
+  ? 'https://raw.githubusercontent.com/ABakker30/mobilekoospuzzle/main/public' // Development fallback
+  : window.location.origin; // Production GitHub Pages (koospuzzle.com or abakker30.github.io/mobilekoospuzzle)
 
 /**
  * Fetch the library manifest from GitHub Pages
