@@ -119,6 +119,41 @@ npm run preview
 npm run lint
 ```
 
+## Shape Editing
+The Puzzle Shape page provides a mobile-first 3D editor for FCC containers:
+
+### Loading Containers
+- Click "Load" to open file picker
+- Supports .json and .fcc.json files
+- Validates v1 container format
+- Shows clear error messages for invalid files
+
+### Editing Shapes
+- **Add Mode**: Tap empty space to add FCC cells (snaps to lattice)
+- **Delete Mode**: Tap existing cells to remove them
+- **Connectivity**: New cells must connect to existing structure
+- **FCC Validation**: Only valid FCC lattice positions allowed
+
+### Visual Controls
+- **Brightness Slider**: Adjust lighting (0.5-2.5, default 1.8)
+- **Cell Count**: Live display of total cells
+- **CID Display**: Shows current container ID (updates on edit)
+- **Change Detection**: Highlights when container is modified
+
+### Saving Containers
+- Click "Save" to export v1 format JSON
+- Uses File System Access API (modern browsers) or download fallback
+- Includes computed CID and designer metadata
+- Writes .fcc.json extension for clear identification
+
+### Mobile Optimization
+- Touch-friendly controls with large buttons
+- 100dvh viewport for full-screen editing
+- Responsive toolbar layout
+- Smooth touch interactions for add/delete
+
+All editing writes v1 format only and maintains upstream compatibility.
+
 ## Out of Scope
 - Engine modifications
 - Custom CLI tools

@@ -6,7 +6,14 @@ import ViewSolutionPage from './views/ViewSolutionPage';
 export default function App() {
   return (
     <HashRouter>
-      <div style={{ minHeight: '100vh', backgroundColor: '#f8f9fa' }}>
+      <div style={{ 
+        width: '100vw',
+        minHeight: '100vh', 
+        margin: 0,
+        padding: 0,
+        backgroundColor: '#f8f9fa',
+        boxSizing: 'border-box'
+      }}>
         <Routes>
           <Route path="/" element={<HomePage />} />
           <Route path="/puzzle-shape" element={<PuzzleShapePage />} />
