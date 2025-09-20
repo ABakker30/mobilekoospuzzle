@@ -1,0 +1,6 @@
+{"timestamp": "2025-09-20T15:33:00.100Z", "event_type": "solver_start", "container_id": "tiny_4_cell_container", "engine": "dfs"}
+{"timestamp": "2025-09-20T15:33:00.250Z", "event_type": "piece_placed", "piece_id": "single_1", "position": [0, 0, 0], "rotation": 0}
+{"timestamp": "2025-09-20T15:33:00.380Z", "event_type": "piece_placed", "piece_id": "single_2", "position": [1, 0, 0], "rotation": 0}
+{"timestamp": "2025-09-20T15:33:00.520Z", "event_type": "backtrack", "depth": 2, "reason": "no_valid_placement"}
+{"timestamp": "2025-09-20T15:33:00.650Z", "event_type": "piece_removed", "piece_id": "single_2", "position": [1, 0, 0]}
+{"timestamp": "2025-09-20T15:33:00.780Z", "event_type": "solver_complete", "solution_found": true, "total_time_ms": 680}

@@ -3,46 +3,66 @@
 ## Overview
 All data formats are defined by the upstream [ballpuzzle4](https://github.com/ABakker30/ballpuzzle4) engine. This document provides quick reference and links.
 
-## Container Format (v1)
-**Purpose**: Defines puzzle shape and constraints
-**Source**: Upstream engine export
-**Location**: `data/examples/containers/`
+## Container Format (FCC v1)
+**Purpose**: Defines puzzle shape and constraints  
+**Source**: Upstream engine export  
+**Location**: `data/examples/containers/`  
+**Upstream Spec**: [CONTAINER_STANDARD.md](https://github.com/ABakker30/ballpuzzle4/blob/v1.6.0/docs/CONTAINER_STANDARD.md)
 
 ```json
 {
-  "version": "1.0",
-  "id": "container_001",
-  "shape": { /* TBD: link to upstream spec */ },
-  "constraints": { /* TBD: link to upstream spec */ }
+  "name": "tiny_4_cell_container",
+  "lattice_type": "fcc", 
+  "coordinates": [[0, 0, 0], [1, 0, 0], [0, 1, 0], [1, 1, 0]]
 }
 ```
 
-## Solution Format
-**Purpose**: Piece placements and final state
-**Source**: Engine solver output
-**Location**: `data/examples/solutions/`
+## Pieces Format (FCC v1)
+**Purpose**: Piece definitions and inventory  
+**Source**: Upstream piece library  
+**Location**: `data/pieces/`  
+**Example**: See `pieces_fcc_v1.json` with standard A-Y pieces
 
 ```json
 {
-  "container_id": "container_001",
-  "pieces": [ /* TBD: link to upstream spec */ ],
-  "metadata": { /* TBD: link to upstream spec */ }
+  "name": "pieces_fcc_v1",
+  "lattice_type": "fcc",
+  "pieces": {
+    "single": {
+      "coordinates": [[0, 0, 0]],
+      "count": 4,
+      "description": "Single ball piece"
+    }
+  }
 }
 ```
 
-## Events Format
-**Purpose**: Move sequences and interactions
-**Source**: Engine event log
-**Location**: `data/examples/events/`
+## Events Format (JSONL)
+**Purpose**: Move sequences and solver interactions  
+**Source**: Engine event log  
+**Location**: `data/examples/events/`  
+**Format**: One JSON object per line
 
-**Meaning**: [Link to upstream documentation needed]
+```jsonl
+{"timestamp": "2025-09-20T15:33:00.100Z", "event_type": "solver_start", "container_id": "tiny_4_cell_container"}
+{"timestamp": "2025-09-20T15:33:00.250Z", "event_type": "piece_placed", "piece_id": "single_1", "position": [0, 0, 0]}
+```
 
-## Status Format
-**Purpose**: Current puzzle state
-**Source**: Engine status export
-**Location**: `data/examples/status/`
+## Status Format (JSON)
+**Purpose**: Current solver state and progress  
+**Source**: Engine status export  
+**Location**: `data/examples/status/`  
+**Upstream Schema**: [status_snapshot.v2.json](https://github.com/ABakker30/ballpuzzle4/blob/v1.6.0/docs/schemas/status_snapshot.v2.json)
 
-**Meaning**: [Link to upstream documentation needed]
+```json
+{
+  "timestamp": "2025-09-20T15:33:00Z",
+  "container_id": "tiny_4_cell_container", 
+  "solver_state": "solving",
+  "pieces_placed": 2,
+  "progress_percent": 50.0
+}
+```
 
 ## Transform Contracts
 

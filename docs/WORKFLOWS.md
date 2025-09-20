@@ -67,7 +67,42 @@ git push origin feat/short-name
 ## CLI Commands Reference
 
 ### Engine Operations (Upstream)
-[TBD: Add exact CLI invocations from ballpuzzle4]
+Based on [ballpuzzle4 v1.6.0](https://github.com/ABakker30/ballpuzzle4/tree/v1.6.0):
+
+#### Solve a Container
+```bash
+python -m cli.solve tests/data/containers/tiny_4.fcc.json \
+  --engine engine-c \
+  --pieces A=1 \
+  --eventlog out/events.jsonl \
+  --solution out/solution.json
+```
+
+#### Verify a Solution  
+```bash
+python -m cli.verify out/solution.json tests/data/containers/tiny_4.fcc.json
+```
+
+#### Exit Codes
+- **0**: Valid/Success
+- **2**: Invalid/Failure
+
+#### Generate Status Snapshots
+```bash
+# Status monitoring during solve (engine-dependent)
+# See upstream docs/schemas/status_snapshot.v2.json for format
+```
+
+#### Event Log Format
+- **Format**: JSONL (one JSON object per line)
+- **Schema**: See upstream documentation
+- **Events**: solver_start, piece_placed, piece_removed, backtrack, solver_complete
+- **Usage**: Real-time monitoring and replay
+
+For complete CLI documentation, see:
+- [Upstream README](https://github.com/ABakker30/ballpuzzle4/blob/v1.6.0/README.md)
+- [VERIFY.md](https://github.com/ABakker30/ballpuzzle4/blob/v1.6.0/docs/VERIFY.md)
+- [ENGINES.md](https://github.com/ABakker30/ballpuzzle4/blob/v1.6.0/docs/ENGINES.md)
 
 ### Local Development
 ```bash
