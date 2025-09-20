@@ -71,7 +71,7 @@ Based on [ballpuzzle4 v1.6.0](https://github.com/ABakker30/ballpuzzle4/tree/v1.6
 
 #### Solve a Container
 ```bash
-python -m cli.solve tests/data/containers/tiny_4.fcc.json \
+python -m cli.solve /content/containers/tiny_4.fcc.json \
   --engine engine-c \
   --pieces A=1 \
   --eventlog out/events.jsonl \
@@ -80,7 +80,7 @@ python -m cli.solve tests/data/containers/tiny_4.fcc.json \
 
 #### Verify a Solution  
 ```bash
-python -m cli.verify out/solution.json tests/data/containers/tiny_4.fcc.json
+python -m cli.verify out/solution.json /content/containers/tiny_4.fcc.json
 ```
 
 #### Exit Codes
