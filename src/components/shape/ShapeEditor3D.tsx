@@ -214,7 +214,7 @@ export default function ShapeEditor3D({
     console.log('ShapeEditor3D: Centered coordinates:', centeredCoords);
     
     // Add new spheres - higher quality with reflective material
-    const geometry = new THREE.SphereGeometry(0.3, 32, 24); // Increased segments for smoother spheres
+    const geometry = new THREE.SphereGeometry(0.28, 32, 24); // Radius adjusted so spheres just touch
     
     centeredCoords.forEach((coord, index) => {
       const worldPos = fccToWorld(coord);
