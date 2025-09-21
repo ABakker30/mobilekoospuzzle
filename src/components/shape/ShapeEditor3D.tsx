@@ -502,8 +502,13 @@ export default function ShapeEditor3D({
     console.log(`Debug spheres visibility set to: ${editMode === 'add'} (editMode: ${editMode})`);
   }, [neighborRecords, editMode]);
 
-  // Debug spheres disabled - neighbor issue fixed with rhombohedral lattice
+  // Debug spheres disabled + mode switch protection
   useEffect(() => {
+    console.log(`Edit mode changed to: ${editMode} - clearing pending actions for safety`);
+    
+    // Clear any pending actions when edit mode changes (prevents accidental actions)
+    clearHoverEffects();
+    
     // Always hide debug spheres
     debugNeighborSpheresRef.current.forEach((debugSphere, index) => {
       debugSphere.visible = false;
@@ -764,7 +769,7 @@ export default function ShapeEditor3D({
         hoveredSphereRef.current = hoveredSphere;
       }
     } else if (editMode === 'add') {
-      // ADD MODE - Hover shows subtle indication, but main interaction is tap-based
+      // ADD MODE - Hover shows subtle preview only, double-tap required for mobile
       // Only show hover preview if there's no pending add position (to avoid interference)
       if (!pendingAddPosition) {
         if (cellRecords.length === 0) {
@@ -773,7 +778,7 @@ export default function ShapeEditor3D({
           previewSphere.position.set(0, 0, 0);
           sceneRef.current.add(previewSphere);
           previewSphereRef.current = previewSphere;
-          console.log(`Hover preview at origin - tap to confirm`);
+          console.log(`Hover preview at origin - double-tap required to add`);
         } else {
           // Use raycasting to find intersected neighbor spheres
           const intersects = raycaster.intersectObjects(neighborSpheresRef.current);
@@ -816,7 +821,7 @@ export default function ShapeEditor3D({
               sceneRef.current.add(previewSphere);
               previewSphereRef.current = previewSphere;
               
-              console.log(`Hover preview at Engine(${neighborRecord.engineCoord.x},${neighborRecord.engineCoord.y},${neighborRecord.engineCoord.z}) - tap to confirm`);
+              console.log(`Hover preview at Engine(${neighborRecord.engineCoord.x},${neighborRecord.engineCoord.y},${neighborRecord.engineCoord.z}) - double-tap required to add`);
             }
           }
         }

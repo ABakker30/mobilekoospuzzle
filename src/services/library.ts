@@ -12,36 +12,47 @@ export interface LibraryManifest {
   items: LibraryItem[];
 }
 
-// Use GitHub Pages URL for production, fallback to raw GitHub for development
-const LIBRARY_BASE_URL = window.location.hostname === 'localhost'
-  ? 'https://raw.githubusercontent.com/ABakker30/mobilekoospuzzle/main/public' // Development fallback
-  : window.location.origin; // Production GitHub Pages (koospuzzle.com or abakker30.github.io/mobilekoospuzzle)
+// Use GitHub Pages URL for production, local dev server for development
+const LIBRARY_BASE_URL = (window.location.hostname === 'localhost' || window.location.hostname.startsWith('192.168.') || window.location.hostname.startsWith('10.'))
+  ? window.location.origin // Local development server (localhost or local IP)
+  : window.location.origin; // Production GitHub Pages (koospuzzle.com)
 
 /**
  * Fetch the library manifest from GitHub Pages
  */
 export async function fetchLibraryManifest(): Promise<LibraryItem[]> {
-  const url = `${LIBRARY_BASE_URL}/content/index.json`;
-  console.log('Fetching library manifest from:', url);
+  // Add cache-busting for mobile to ensure fresh data
+  const cacheBuster = Date.now();
+  const url = `${LIBRARY_BASE_URL}/content/index.json?v=${cacheBuster}`;
+  console.log('Library Service: Hostname:', window.location.hostname);
+  console.log('Library Service: Base URL:', LIBRARY_BASE_URL);
+  console.log('Library Service: Full URL:', url);
   
   try {
-    const response = await fetch(url);
+    const response = await fetch(url, {
+      cache: 'no-cache', // Force fresh fetch
+      headers: {
+        'Cache-Control': 'no-cache'
+      }
+    });
     console.log('Library manifest response:', response.status, response.statusText);
     console.log('Response headers:', Object.fromEntries(response.headers.entries()));
     
     if (!response.ok) {
       console.error('Response not OK:', response.status, response.statusText);
       if (response.status === 404) {
-        throw new Error('Library manifest not found. GitHub Pages may not be fully deployed.');
+        throw new Error('Library manifest not found. Check if content/index.json exists.');
       }
       throw new Error(`HTTP ${response.status}: ${response.statusText}`);
     }
     
     const text = await response.text();
-    console.log('Raw response text:', text.substring(0, 200) + '...');
+    console.log('Raw response text length:', text.length);
+    console.log('Raw response preview:', text.substring(0, 300) + '...');
     
     const items: LibraryItem[] = JSON.parse(text);
     console.log('Library manifest loaded:', items.length, 'items');
+    console.log('First 3 items:', items.slice(0, 3).map(item => ({ name: item.name, cid: item.cid, size: item.size })));
     return items;
   } catch (error) {
     console.error('Failed to fetch library manifest:', error);

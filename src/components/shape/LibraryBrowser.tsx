@@ -31,6 +31,8 @@ export default function LibraryBrowser({ onContainerSelect, onClose, loading = f
         
         console.log('LibraryBrowser: Manifest received, processing containers');
         const containerItems = getContainersFromManifest(manifest);
+        console.log('LibraryBrowser: Container items:', containerItems);
+        console.log('LibraryBrowser: Sample container names:', containerItems.slice(0, 3).map(item => ({ name: item.name, cid: item.cid })));
         setContainers(containerItems);
         setFilteredContainers(sortContainers(containerItems, sortBy));
         
@@ -223,15 +225,16 @@ export default function LibraryBrowser({ onContainerSelect, onClose, loading = f
                 style={{
                   display: 'flex',
                   justifyContent: 'space-between',
-                  alignItems: 'center',
-                  padding: '12px',
+                  alignItems: 'flex-start',
+                  padding: '10px',
                   margin: '4px 0',
                   border: '1px solid #e9ecef',
-                  borderRadius: '8px',
+                  borderRadius: '6px',
                   backgroundColor: containerLoading === item.name ? '#f8f9fa' : 'white',
                   cursor: containerLoading === item.name ? 'not-allowed' : 'pointer',
                   opacity: containerLoading === item.name ? 0.7 : 1,
-                  transition: 'all 0.2s ease'
+                  transition: 'all 0.2s ease',
+                  minHeight: '60px'
                 }}
                 onClick={() => !containerLoading && handleContainerLoad(item)}
               >
@@ -240,27 +243,60 @@ export default function LibraryBrowser({ onContainerSelect, onClose, loading = f
                     fontSize: '14px',
                     fontWeight: '500',
                     marginBottom: '4px',
-                    overflow: 'hidden',
-                    textOverflow: 'ellipsis',
-                    whiteSpace: 'nowrap'
+                    wordBreak: 'break-word',
+                    lineHeight: '1.3'
                   }}>
-                    {item.name.replace('.fcc.json', '')}
+                    {(() => {
+                      // Debug logging for problematic items
+                      if (!item.name || item.name === 'Unknown' || item.name.trim() === '') {
+                        console.log('LibraryBrowser: Item with missing/unknown name:', { 
+                          name: item.name, 
+                          cid: item.cid, 
+                          size: item.size,
+                          url: item.url 
+                        });
+                      }
+                      
+                      // Display logic with better fallbacks
+                      if (item.name && item.name !== 'Unknown' && item.name.trim() !== '') {
+                        return item.name.replace('.fcc.json', '');
+                      } else if (item.size && typeof item.size === 'number') {
+                        return `${item.size} cells`;
+                      } else if (item.cid && item.cid !== 'No CID' && item.cid.trim() !== '') {
+                        return `Shape ${formatCID(item.cid)}`;
+                      } else {
+                        return 'Unnamed Shape';
+                      }
+                    })()}
                   </div>
                   <div style={{
-                    fontSize: '12px',
+                    fontSize: '11px',
                     color: '#6c757d',
                     display: 'flex',
-                    gap: '12px'
+                    flexDirection: 'column',
+                    gap: '2px'
                   }}>
                     <span>{formatSize(item.size)}</span>
-                    <span>CID: {formatCID(item.cid)}</span>
+                    <span style={{ 
+                      fontFamily: 'monospace',
+                      wordBreak: 'break-all'
+                    }}>
+                      CID: {formatCID(item.cid)}
+                    </span>
                   </div>
                 </div>
                 <div style={{
-                  fontSize: '12px',
+                  fontSize: '11px',
                   color: '#007bff',
                   fontWeight: '500',
-                  marginLeft: '12px'
+                  marginLeft: '8px',
+                  marginTop: '2px',
+                  padding: '4px 8px',
+                  backgroundColor: '#f8f9fa',
+                  borderRadius: '4px',
+                  border: '1px solid #007bff',
+                  minWidth: '50px',
+                  textAlign: 'center'
                 }}>
                   {containerLoading === item.name ? 'Loading...' : 'Load'}
                 </div>

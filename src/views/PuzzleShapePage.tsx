@@ -14,6 +14,7 @@ export default function PuzzleShapePage() {
   // Removed excessive logging to prevent console spam
   
   const [coordinates, setCoordinates] = useState<FCCCoord[]>([]);
+  const [coordinatesHistory, setCoordinatesHistory] = useState<FCCCoord[][]>([]);
   const [editMode, setEditMode] = useState<'add' | 'delete'>('add');
   const [editingEnabled, setEditingEnabled] = useState(false);
   const [currentCID, setCurrentCID] = useState<string>('');
@@ -69,6 +70,25 @@ export default function PuzzleShapePage() {
   };
 
   const [settings, setSettings] = useState<AppSettings>(loadSettings);
+
+  // Handle coordinate changes with history tracking
+  const handleCoordinatesChange = (newCoordinates: FCCCoord[]) => {
+    // Add current coordinates to history before changing (max 10 steps)
+    setCoordinatesHistory(prev => {
+      const newHistory = [coordinates, ...prev].slice(0, 10);
+      return newHistory;
+    });
+    setCoordinates(newCoordinates);
+  };
+
+  // Undo function
+  const handleUndo = () => {
+    if (coordinatesHistory.length > 0) {
+      const [previousCoordinates, ...remainingHistory] = coordinatesHistory;
+      setCoordinates(previousCoordinates);
+      setCoordinatesHistory(remainingHistory);
+    }
+  };
   
   // Detect if this is a page reload and persist state
   useEffect(() => {
@@ -264,11 +284,13 @@ export default function PuzzleShapePage() {
           originalCID={originalCID}
           editMode={editMode}
           editingEnabled={editingEnabled}
+          canUndo={coordinatesHistory.length > 0}
           onSave={handleSave}
           onBrowseLibrary={handleBrowseLibrary}
           onSettings={handleSettings}
           onEditModeChange={setEditMode}
           onEditingEnabledChange={setEditingEnabled}
+          onUndo={handleUndo}
           loading={loading}
         />
       </div>
@@ -283,7 +305,7 @@ export default function PuzzleShapePage() {
           settings={settings}
           editMode={editMode}
           editingEnabled={editingEnabled}
-          onCoordinatesChange={setCoordinates}
+          onCoordinatesChange={handleCoordinatesChange}
         />
       </div>
       
