@@ -21,89 +21,41 @@ const LIBRARY_BASE_URL = (window.location.hostname === 'localhost' || window.loc
  * Fetch the library manifest from GitHub Pages
  */
 export async function fetchLibraryManifest(): Promise<LibraryItem[]> {
-  // Add cache-busting for mobile to ensure fresh data
-  const cacheBuster = Date.now();
-  const url = `${LIBRARY_BASE_URL}/content/index.json?v=${cacheBuster}`;
-  console.log('Library Service: Hostname:', window.location.hostname);
-  console.log('Library Service: Base URL:', LIBRARY_BASE_URL);
-  console.log('Library Service: Full URL:', url);
+  const url = `${LIBRARY_BASE_URL}/content/index.json`;
   
   try {
-    // Mobile-specific headers to ensure proper JSON parsing
-    const isMobile = /Mobile|Android|iPhone|iPad/.test(navigator.userAgent);
-    const headers: Record<string, string> = {
-      'Cache-Control': 'no-cache',
-      'Accept': 'application/json, text/plain, */*'
-    };
-    
-    // Add mobile-specific headers
-    if (isMobile) {
-      headers['X-Requested-With'] = 'XMLHttpRequest';
-      headers['Accept-Encoding'] = 'gzip, deflate, br';
-    }
-    
-    console.log('Fetch headers:', headers);
-    
-    const response = await fetch(url, {
-      cache: 'no-cache', // Force fresh fetch
-      headers
-    });
-    console.log('Library manifest response:', response.status, response.statusText);
-    console.log('Response headers:', Object.fromEntries(response.headers.entries()));
+    const response = await fetch(url);
     
     if (!response.ok) {
-      console.error('Response not OK:', response.status, response.statusText);
-      if (response.status === 404) {
-        throw new Error('Library manifest not found. Check if content/index.json exists.');
-      }
-      throw new Error(`HTTP ${response.status}: ${response.statusText}`);
+      throw new Error(`Failed to fetch library: ${response.status}`);
     }
     
-    const text = await response.text();
-    console.log('Raw response text length:', text.length);
-    console.log('Raw response preview:', text.substring(0, 300) + '...');
+    const items: LibraryItem[] = await response.json();
     
-    const items: LibraryItem[] = JSON.parse(text);
-    console.log('Library manifest loaded:', items.length, 'items');
-    console.log('First 3 items:', items.slice(0, 3).map(item => ({ name: item.name, cid: item.cid, size: item.size })));
-    
-    // Mobile-specific debugging and repair: Check for data corruption
-    const unknownItems = items.filter(item => !item.name || item.name === 'Unknown' || item.name.trim() === '');
-    if (unknownItems.length > 0) {
-      console.warn('Found items with missing/unknown names:', unknownItems.length);
-      console.warn('Sample unknown items:', unknownItems.slice(0, 3));
-      console.warn('User agent:', navigator.userAgent);
-      console.warn('Is mobile:', /Mobile|Android|iPhone|iPad/.test(navigator.userAgent));
-      
-      // Try to repair names from URLs
-      unknownItems.forEach(item => {
-        if (item.url && (!item.name || item.name === 'Unknown' || item.name.trim() === '')) {
-          // Extract filename from URL path
-          const urlParts = item.url.split('/');
-          const filename = urlParts[urlParts.length - 1];
-          if (filename && filename.includes('.fcc.json')) {
-            console.log(`Repairing item name from URL: ${item.url} -> ${filename}`);
-            item.name = filename;
+    // Simple fix: ensure all items have proper names
+    return items.map(item => {
+      if (!item.name || item.name === 'Unknown' || item.name.trim() === '') {
+        // Extract filename from URL as fallback
+        if (item.url) {
+          const filename = item.url.split('/').pop() || '';
+          if (filename.endsWith('.fcc.json')) {
+            return { ...item, name: filename };
           }
         }
-      });
-    }
-    
-    return items;
+        // If no URL, use size or CID as name
+        if (item.size && typeof item.size === 'number') {
+          return { ...item, name: `${item.size} cells.fcc.json` };
+        }
+        if (item.cid) {
+          return { ...item, name: `Shape_${item.cid.substring(7, 15)}.fcc.json` };
+        }
+        return { ...item, name: 'Unknown_Shape.fcc.json' };
+      }
+      return item;
+    });
   } catch (error) {
-    console.error('Failed to fetch library manifest:', error);
-    console.error('Error type:', error.constructor.name);
-    console.error('Error message:', (error as Error).message);
-    
-    if (error instanceof SyntaxError) {
-      throw new Error('Invalid JSON response from library. Please try again.');
-    }
-    
-    if (error instanceof TypeError && error.message.includes('fetch')) {
-      throw new Error('Network error. Please check your connection and try again.');
-    }
-    
-    throw new Error(`Library error: ${(error as Error).message}`);
+    console.error('Library fetch error:', error);
+    throw new Error('Failed to load shape library');
   }
 }
 
