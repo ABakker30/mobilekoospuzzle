@@ -29,11 +29,24 @@ export async function fetchLibraryManifest(): Promise<LibraryItem[]> {
   console.log('Library Service: Full URL:', url);
   
   try {
+    // Mobile-specific headers to ensure proper JSON parsing
+    const isMobile = /Mobile|Android|iPhone|iPad/.test(navigator.userAgent);
+    const headers: Record<string, string> = {
+      'Cache-Control': 'no-cache',
+      'Accept': 'application/json, text/plain, */*'
+    };
+    
+    // Add mobile-specific headers
+    if (isMobile) {
+      headers['X-Requested-With'] = 'XMLHttpRequest';
+      headers['Accept-Encoding'] = 'gzip, deflate, br';
+    }
+    
+    console.log('Fetch headers:', headers);
+    
     const response = await fetch(url, {
       cache: 'no-cache', // Force fresh fetch
-      headers: {
-        'Cache-Control': 'no-cache'
-      }
+      headers
     });
     console.log('Library manifest response:', response.status, response.statusText);
     console.log('Response headers:', Object.fromEntries(response.headers.entries()));
@@ -53,6 +66,29 @@ export async function fetchLibraryManifest(): Promise<LibraryItem[]> {
     const items: LibraryItem[] = JSON.parse(text);
     console.log('Library manifest loaded:', items.length, 'items');
     console.log('First 3 items:', items.slice(0, 3).map(item => ({ name: item.name, cid: item.cid, size: item.size })));
+    
+    // Mobile-specific debugging and repair: Check for data corruption
+    const unknownItems = items.filter(item => !item.name || item.name === 'Unknown' || item.name.trim() === '');
+    if (unknownItems.length > 0) {
+      console.warn('Found items with missing/unknown names:', unknownItems.length);
+      console.warn('Sample unknown items:', unknownItems.slice(0, 3));
+      console.warn('User agent:', navigator.userAgent);
+      console.warn('Is mobile:', /Mobile|Android|iPhone|iPad/.test(navigator.userAgent));
+      
+      // Try to repair names from URLs
+      unknownItems.forEach(item => {
+        if (item.url && (!item.name || item.name === 'Unknown' || item.name.trim() === '')) {
+          // Extract filename from URL path
+          const urlParts = item.url.split('/');
+          const filename = urlParts[urlParts.length - 1];
+          if (filename && filename.includes('.fcc.json')) {
+            console.log(`Repairing item name from URL: ${item.url} -> ${filename}`);
+            item.name = filename;
+          }
+        }
+      });
+    }
+    
     return items;
   } catch (error) {
     console.error('Failed to fetch library manifest:', error);
