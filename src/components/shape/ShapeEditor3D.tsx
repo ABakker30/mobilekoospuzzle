@@ -83,12 +83,12 @@ export default function ShapeEditor3D({
   };
 
   // Helper function to create preview sphere
-  const createPreviewSphere = () => {
+  const createPreviewSphere = (isConfirmationStage = false) => {
     const geometry = new THREE.SphereGeometry(0.283, 32, 24);
     const material = new THREE.MeshStandardMaterial({
       color: parseInt(settings.material.color.replace('#', '0x')),
       transparent: true,
-      opacity: Math.max(0.7, 1 - settings.material.transparency), // Use user transparency but ensure it's visible as preview
+      opacity: isConfirmationStage ? 0.5 : Math.max(0.7, 1 - settings.material.transparency), // 50% for first tap, user setting for hover
       metalness: settings.material.metalness,
       roughness: 1 - settings.material.reflectiveness
     });
@@ -409,7 +409,7 @@ export default function ShapeEditor3D({
 
     // Create invisible spheres at neighbor positions for raycasting
     neighborRecords.forEach(neighborRecord => {
-      const geometry = new THREE.SphereGeometry(0.283, 8, 6); // Lower detail for invisible spheres
+      const geometry = new THREE.SphereGeometry(0.4, 8, 6); // Larger radius for easier mobile tapping
       const material = new THREE.MeshBasicMaterial({ 
         transparent: true, 
         opacity: 0, // Completely invisible
@@ -608,9 +608,10 @@ export default function ShapeEditor3D({
       // Update color
       previewMaterial.color.setHex(parseInt(settings.material.color.replace('#', '0x')));
       
-      // Update transparency (ensure it's visible as preview)
+      // Update transparency - check if this is a confirmation stage preview (50% opacity)
       previewMaterial.transparent = true;
-      previewMaterial.opacity = Math.max(0.7, 1 - settings.material.transparency);
+      const isConfirmationStage = pendingAddPosition !== null;
+      previewMaterial.opacity = isConfirmationStage ? 0.5 : Math.max(0.7, 1 - settings.material.transparency);
       
       // Update metalness
       previewMaterial.metalness = settings.material.metalness;
@@ -653,6 +654,10 @@ export default function ShapeEditor3D({
 
     const raycaster = new THREE.Raycaster();
     raycaster.setFromCamera(mouse, cameraRef.current);
+    
+    // Increase raycaster threshold for better mobile touch detection
+    raycaster.params.Points.threshold = 0.1;
+    raycaster.params.Line.threshold = 0.1;
 
     // Clear previous hover effects
     clearHoverEffects();
@@ -678,41 +683,61 @@ export default function ShapeEditor3D({
         hoveredSphereRef.current = hoveredSphere;
       }
     } else if (editMode === 'add') {
-      // ADD MODE - Two-stage process: hover shows preview, click confirms
-      if (cellRecords.length === 0) {
-        // First cell - show preview at origin
-        const previewSphere = createPreviewSphere();
-        previewSphere.position.set(0, 0, 0);
-        sceneRef.current.add(previewSphere);
-        previewSphereRef.current = previewSphere;
-        setPendingAddPosition({ 
-          engineCoord: { x: 0, y: 0, z: 0 }, 
-          worldCoord: new THREE.Vector3(0, 0, 0), 
-          id: 'pending_origin' 
-        });
-        console.log(`First cell preview at origin`);
-      } else {
-        // Use raycasting to find intersected neighbor spheres
-        const intersects = raycaster.intersectObjects(neighborSpheresRef.current);
-        
-        if (intersects.length > 0) {
-          // Get the closest intersected neighbor sphere
-          const intersectedSphere = intersects[0].object as THREE.Mesh;
-          const neighborRecord = (intersectedSphere as any).neighborRecord as CellRecord;
-          
-          if (neighborRecord) {
-            // Show preview sphere at exact neighbor position
-            const previewSphere = createPreviewSphere();
-            previewSphere.position.copy(neighborRecord.worldCoord);
-            sceneRef.current.add(previewSphere);
-            previewSphereRef.current = previewSphere;
-            setPendingAddPosition(neighborRecord);
-            
-            console.log(`Preview at exact neighbor Engine(${neighborRecord.engineCoord.x},${neighborRecord.engineCoord.y},${neighborRecord.engineCoord.z}) -> World(${neighborRecord.worldCoord.x.toFixed(2)},${neighborRecord.worldCoord.y.toFixed(2)},${neighborRecord.worldCoord.z.toFixed(2)})`);
-          }
+      // ADD MODE - Hover shows subtle indication, but main interaction is tap-based
+      // Only show hover preview if there's no pending add position (to avoid interference)
+      if (!pendingAddPosition) {
+        if (cellRecords.length === 0) {
+          // First cell - subtle hover preview at origin
+          const previewSphere = createPreviewSphere(false); // Use normal transparency for hover
+          previewSphere.position.set(0, 0, 0);
+          sceneRef.current.add(previewSphere);
+          previewSphereRef.current = previewSphere;
+          console.log(`Hover preview at origin - tap to confirm`);
         } else {
-          // No neighbor intersection - clear any pending add
-          setPendingAddPosition(null);
+          // Use raycasting to find intersected neighbor spheres
+          const intersects = raycaster.intersectObjects(neighborSpheresRef.current);
+          
+          if (intersects.length > 0) {
+            // Two-stage selection: 1) closest to hover point, 2) closest to camera as tiebreaker
+            let bestIntersect = intersects[0];
+            
+            if (intersects.length > 1) {
+              // Find the intersection closest to the hover point (smallest distance from ray)
+              const hoverDistances = intersects.map(intersect => {
+                const sphereCenter = intersect.object.position;
+                return raycaster.ray.distanceToPoint(sphereCenter);
+              });
+              
+              const minHoverDistance = Math.min(...hoverDistances);
+              const hoverThreshold = 0.1; // Allow small variations in hover distance
+              
+              // Filter to neighbors that are close to the hover point
+              const closeToHover = intersects.filter((intersect, index) => 
+                hoverDistances[index] <= minHoverDistance + hoverThreshold
+              );
+              
+              // Among those close to hover, choose the one closest to camera
+              if (closeToHover.length > 1) {
+                closeToHover.sort((a, b) => a.distance - b.distance);
+                bestIntersect = closeToHover[0];
+              } else {
+                bestIntersect = closeToHover[0];
+              }
+            }
+            
+            const intersectedSphere = bestIntersect.object as THREE.Mesh;
+            const neighborRecord = (intersectedSphere as any).neighborRecord as CellRecord;
+            
+            if (neighborRecord) {
+              // Show subtle hover preview
+              const previewSphere = createPreviewSphere(false); // Use normal transparency for hover
+              previewSphere.position.copy(neighborRecord.worldCoord);
+              sceneRef.current.add(previewSphere);
+              previewSphereRef.current = previewSphere;
+              
+              console.log(`Hover preview at Engine(${neighborRecord.engineCoord.x},${neighborRecord.engineCoord.y},${neighborRecord.engineCoord.z}) - tap to confirm`);
+            }
+          }
         }
       }
     }
@@ -736,6 +761,10 @@ export default function ShapeEditor3D({
 
     const raycaster = new THREE.Raycaster();
     raycaster.setFromCamera(mouse, cameraRef.current);
+    
+    // Increase raycaster threshold for better mobile touch detection
+    raycaster.params.Points.threshold = 0.1;
+    raycaster.params.Line.threshold = 0.1;
 
     if (editMode === 'delete') {
       // Delete mode - check for sphere intersections using CellRecord
@@ -755,18 +784,93 @@ export default function ShapeEditor3D({
         }
       }
     } else if (editMode === 'add') {
-      // ADD MODE CLICK - Two-stage: only add if there's a pending position
-      if (pendingAddPosition) {
-        console.log(`Confirming add: Engine(${pendingAddPosition.engineCoord.x},${pendingAddPosition.engineCoord.y},${pendingAddPosition.engineCoord.z})`);
-        
-        // Add the engine coordinate to the original coordinates array
-        const newCoordinates = [...coordinates, pendingAddPosition.engineCoord];
-        onCoordinatesChange(newCoordinates);
-        
-        // Clear the pending position
-        setPendingAddPosition(null);
+      // ADD MODE CLICK - Two-stage tap process
+      if (cellRecords.length === 0) {
+        // First cell case
+        if (pendingAddPosition) {
+          // Second tap - confirm add at origin
+          console.log(`Confirming first cell at origin`);
+          onCoordinatesChange([{ x: 0, y: 0, z: 0 }]);
+          setPendingAddPosition(null);
+        } else {
+          // First tap - show preview at origin
+          console.log(`First tap - showing preview at origin`);
+          const previewSphere = createPreviewSphere(true); // 50% transparent
+          previewSphere.position.set(0, 0, 0);
+          sceneRef.current.add(previewSphere);
+          previewSphereRef.current = previewSphere;
+          setPendingAddPosition({ 
+            engineCoord: { x: 0, y: 0, z: 0 }, 
+            worldCoord: new THREE.Vector3(0, 0, 0), 
+            id: 'pending_origin' 
+          });
+        }
       } else {
-        console.log(`No pending add position - click ignored`);
+        // Subsequent cells - use raycasting to find neighbor positions
+        const intersects = raycaster.intersectObjects(neighborSpheresRef.current);
+        
+        if (intersects.length > 0) {
+          // Two-stage selection: 1) closest to tap point, 2) closest to camera as tiebreaker
+          let bestIntersect = intersects[0];
+          
+          if (intersects.length > 1) {
+            // Find the intersection closest to the tap point (smallest distance from ray)
+            const tapDistances = intersects.map(intersect => {
+              const sphereCenter = intersect.object.position;
+              return raycaster.ray.distanceToPoint(sphereCenter);
+            });
+            
+            const minTapDistance = Math.min(...tapDistances);
+            const tapThreshold = 0.1; // Allow small variations in tap distance
+            
+            // Filter to neighbors that are close to the tap point
+            const closeToTap = intersects.filter((intersect, index) => 
+              tapDistances[index] <= minTapDistance + tapThreshold
+            );
+            
+            // Among those close to tap, choose the one closest to camera
+            if (closeToTap.length > 1) {
+              closeToTap.sort((a, b) => a.distance - b.distance);
+              bestIntersect = closeToTap[0];
+              console.log(`Multiple neighbors near tap - selected closest to camera`);
+            } else {
+              bestIntersect = closeToTap[0];
+            }
+          }
+          
+          const intersectedSphere = bestIntersect.object as THREE.Mesh;
+          const neighborRecord = (intersectedSphere as any).neighborRecord as CellRecord;
+          
+          if (neighborRecord) {
+            if (pendingAddPosition && 
+                pendingAddPosition.engineCoord.x === neighborRecord.engineCoord.x &&
+                pendingAddPosition.engineCoord.y === neighborRecord.engineCoord.y &&
+                pendingAddPosition.engineCoord.z === neighborRecord.engineCoord.z) {
+              // Second tap on same position - confirm add
+              console.log(`Confirming add: Engine(${neighborRecord.engineCoord.x},${neighborRecord.engineCoord.y},${neighborRecord.engineCoord.z})`);
+              const newCoordinates = [...coordinates, neighborRecord.engineCoord];
+              onCoordinatesChange(newCoordinates);
+              setPendingAddPosition(null);
+            } else {
+              // First tap or tap on different position - show preview
+              console.log(`First tap - showing preview at Engine(${neighborRecord.engineCoord.x},${neighborRecord.engineCoord.y},${neighborRecord.engineCoord.z})`);
+              
+              // Clear any existing preview
+              clearHoverEffects();
+              
+              // Show new preview at 50% transparency
+              const previewSphere = createPreviewSphere(true); // 50% transparent
+              previewSphere.position.copy(neighborRecord.worldCoord);
+              sceneRef.current.add(previewSphere);
+              previewSphereRef.current = previewSphere;
+              setPendingAddPosition(neighborRecord);
+            }
+          }
+        } else {
+          // Tap outside valid neighbor positions - clear preview
+          console.log(`Tap outside valid positions - clearing preview`);
+          clearHoverEffects();
+        }
       }
     }
 
