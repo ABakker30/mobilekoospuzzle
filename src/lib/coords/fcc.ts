@@ -69,27 +69,30 @@ export function isValidFCCCoord(fcc: FCCCoord): boolean {
 }
 
 /**
- * Get FCC neighbors for connectivity checking
+ * Get rhombohedral lattice neighbors for connectivity checking
  */
 export function getFCCNeighbors(fcc: FCCCoord): FCCCoord[] {
   const neighbors: FCCCoord[] = [];
   
-  // 12 nearest neighbors in FCC lattice
+  // 6 nearest neighbors in rhombohedral lattice
   const offsets = [
-    [1, 1, 0], [1, -1, 0], [-1, 1, 0], [-1, -1, 0],
-    [1, 0, 1], [1, 0, -1], [-1, 0, 1], [-1, 0, -1],
-    [0, 1, 1], [0, 1, -1], [0, -1, 1], [0, -1, -1]
+    [1, 0, 0], [-1, 0, 0],  // ±x direction
+    [0, 1, 0], [0, -1, 0],  // ±y direction  
+    [0, 0, 1], [0, 0, -1]   // ±z direction
   ];
   
   for (const [dx, dy, dz] of offsets) {
-    neighbors.push({
+    const neighbor = {
       x: fcc.x + dx,
       y: fcc.y + dy,
       z: fcc.z + dz
-    });
+    };
+    neighbors.push(neighbor);
+    console.log(`  Rhombohedral offset [${dx},${dy},${dz}] -> Engine(${neighbor.x},${neighbor.y},${neighbor.z})`);
   }
   
-  return neighbors;
+  console.log(`Generated ${neighbors.length} rhombohedral neighbors for (${fcc.x}, ${fcc.y}, ${fcc.z})`);
+  return neighbors; // Always return all 6
 }
 
 /**

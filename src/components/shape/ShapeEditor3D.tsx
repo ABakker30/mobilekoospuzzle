@@ -54,6 +54,7 @@ export default function ShapeEditor3D({
   const [neighborRecords, setNeighborRecords] = useState<CellRecord[]>([]);
   const [pendingAddPosition, setPendingAddPosition] = useState<CellRecord | null>(null);
   const neighborSpheresRef = useRef<THREE.Mesh[]>([]);
+  const debugNeighborSpheresRef = useRef<THREE.Mesh[]>([]);
 
   // Helper function to convert focal length to FOV
   const focalLengthToFOV = (focalLength: number): number => {
@@ -114,29 +115,50 @@ export default function ShapeEditor3D({
     setPendingAddPosition(null);
   };
 
-  // Transform engine coordinates to world coordinates with all viewing transformations
+  // Transform engine coordinates to world coordinates with world-space centering
   const engineToWorldTransform = (engineCoords: FCCCoord[]): CellRecord[] => {
     if (engineCoords.length === 0) return [];
 
     console.log(`=== TRANSFORMING ENGINE TO WORLD ===`);
     console.log(`Input engine coords (integers):`, engineCoords.map(c => `(${c.x},${c.y},${c.z})`));
     
-    // Apply centering transformation ONLY for world coordinate calculation
-    const centeredCoords = centerFCCCoords(engineCoords);
-    console.log(`Centered coords (for display only):`, centeredCoords.map(c => `(${c.x},${c.y},${c.z})`));
+    // Step 1: Convert ALL engine coordinates to world space (no centering yet)
+    const worldCoords = engineCoords.map(coord => fccToWorld(coord));
+    console.log(`World coords (before centering):`, worldCoords.map(w => `(${w.x.toFixed(2)},${w.y.toFixed(2)},${w.z.toFixed(2)})`));
     
-    // Convert to CellRecords - PRESERVE original integer engine coordinates
+    // Step 2: Find bounding box in WORLD space
+    const minX = Math.min(...worldCoords.map(w => w.x));
+    const minY = Math.min(...worldCoords.map(w => w.y));
+    const minZ = Math.min(...worldCoords.map(w => w.z));
+    const maxX = Math.max(...worldCoords.map(w => w.x));
+    const maxY = Math.max(...worldCoords.map(w => w.y));
+    const maxZ = Math.max(...worldCoords.map(w => w.z));
+    
+    // Step 3: Calculate center point in WORLD space
+    const worldCenter = {
+      x: (minX + maxX) / 2,
+      y: (minY + maxY) / 2,
+      z: (minZ + maxZ) / 2
+    };
+    console.log(`World space center: (${worldCenter.x.toFixed(2)}, ${worldCenter.y.toFixed(2)}, ${worldCenter.z.toFixed(2)})`);
+    
+    // Step 4: Apply centering in WORLD space
     const records: CellRecord[] = engineCoords.map((originalCoord, index) => {
-      const centeredCoord = centeredCoords[index];
-      const worldPos = fccToWorld(centeredCoord); // Use centered coord for world position
+      const worldPos = worldCoords[index];
+      const centeredWorldPos = {
+        x: worldPos.x - worldCenter.x,
+        y: worldPos.y - worldCenter.y,
+        z: worldPos.z - worldCenter.z
+      };
+      
       return {
         engineCoord: originalCoord, // KEEP original integer coordinate
-        worldCoord: new THREE.Vector3(worldPos.x, worldPos.y, worldPos.z),
+        worldCoord: new THREE.Vector3(centeredWorldPos.x, centeredWorldPos.y, centeredWorldPos.z),
         id: `cell_${originalCoord.x}_${originalCoord.y}_${originalCoord.z}_${Date.now()}_${index}`
       };
     });
     
-    console.log(`Created ${records.length} cell records`);
+    console.log(`Created ${records.length} cell records with world-space centering`);
     records.forEach(record => {
       console.log(`  Engine(${record.engineCoord.x},${record.engineCoord.y},${record.engineCoord.z}) -> World(${record.worldCoord.x.toFixed(2)},${record.worldCoord.y.toFixed(2)},${record.worldCoord.z.toFixed(2)})`);
     });
@@ -144,30 +166,40 @@ export default function ShapeEditor3D({
     return records;
   };
 
-  // Calculate neighbor records from existing cell records
+  // Calculate neighbor records from existing cell records using world-space centering
   const calculateNeighborRecords = (activeCells: CellRecord[]): CellRecord[] => {
     if (activeCells.length === 0) return [];
 
     console.log(`=== CALCULATING NEIGHBOR RECORDS ===`);
     const neighborMap = new Map<string, CellRecord>();
     
-    // Get the SAME centering transformation that was applied to active cells
+    // Get world center from active cells (same as used in engineToWorldTransform)
     const originalEngineCoords = activeCells.map(cell => cell.engineCoord);
-    const centeredActiveCoords = centerFCCCoords(originalEngineCoords);
+    const worldCoords = originalEngineCoords.map(coord => fccToWorld(coord));
     
-    // Calculate the centering offset (same for all cells)
-    const centeringOffset = {
-      x: centeredActiveCoords[0].x - originalEngineCoords[0].x,
-      y: centeredActiveCoords[0].y - originalEngineCoords[0].y,
-      z: centeredActiveCoords[0].z - originalEngineCoords[0].z
+    const minX = Math.min(...worldCoords.map(w => w.x));
+    const minY = Math.min(...worldCoords.map(w => w.y));
+    const minZ = Math.min(...worldCoords.map(w => w.z));
+    const maxX = Math.max(...worldCoords.map(w => w.x));
+    const maxY = Math.max(...worldCoords.map(w => w.y));
+    const maxZ = Math.max(...worldCoords.map(w => w.z));
+    
+    const worldCenter = {
+      x: (minX + maxX) / 2,
+      y: (minY + maxY) / 2,
+      z: (minZ + maxZ) / 2
     };
     
-    console.log(`Using centering offset: (${centeringOffset.x}, ${centeringOffset.y}, ${centeringOffset.z})`);
+    console.log(`Using world center: (${worldCenter.x.toFixed(2)}, ${worldCenter.y.toFixed(2)}, ${worldCenter.z.toFixed(2)})`);
     
-    activeCells.forEach(activeCell => {
+    activeCells.forEach((activeCell, cellIndex) => {
       const neighbors = getFCCNeighbors(activeCell.engineCoord);
+      console.log(`\n=== CELL ${cellIndex} at Engine(${activeCell.engineCoord.x},${activeCell.engineCoord.y},${activeCell.engineCoord.z}) ===`);
+      console.log(`Generated ${neighbors.length} neighbors (should be 12):`);
       
-      neighbors.forEach(neighborCoord => {
+      let validNeighborsForThisCell = 0;
+      
+      neighbors.forEach((neighborCoord, neighborIndex) => {
         const key = `${neighborCoord.x},${neighborCoord.y},${neighborCoord.z}`;
         
         // Skip if this position is already an active cell
@@ -177,35 +209,46 @@ export default function ShapeEditor3D({
           active.engineCoord.z === neighborCoord.z
         );
         
-        if (!isActiveCell && !neighborMap.has(key)) {
-          // Apply the SAME centering offset as active cells
-          const centeredNeighbor = {
-            x: neighborCoord.x + centeringOffset.x,
-            y: neighborCoord.y + centeringOffset.y,
-            z: neighborCoord.z + centeringOffset.z
+        const alreadyInMap = neighborMap.has(key);
+        
+        // DETAILED LOGGING FOR MISSING NEIGHBORS
+        if (isActiveCell) {
+          const matchingCell = activeCells.find(active => 
+            active.engineCoord.x === neighborCoord.x && 
+            active.engineCoord.y === neighborCoord.y && 
+            active.engineCoord.z === neighborCoord.z
+          );
+          console.log(`  ${neighborIndex}: Engine(${neighborCoord.x},${neighborCoord.y},${neighborCoord.z}) SKIPPED - matches active cell at Engine(${matchingCell?.engineCoord.x},${matchingCell?.engineCoord.y},${matchingCell?.engineCoord.z})`);
+        } else {
+          console.log(`  ${neighborIndex}: Engine(${neighborCoord.x},${neighborCoord.y},${neighborCoord.z}) isActive=${isActiveCell} inMap=${alreadyInMap}`);
+        }
+        
+        if (!isActiveCell && !alreadyInMap) {
+          validNeighborsForThisCell++;
+          // Apply world-space centering (same as active cells)
+          const worldPos = fccToWorld(neighborCoord);
+          const centeredWorldPos = {
+            x: worldPos.x - worldCenter.x,
+            y: worldPos.y - worldCenter.y,
+            z: worldPos.z - worldCenter.z
           };
           
-          const worldPos = fccToWorld(centeredNeighbor);
-          const neighborWorldCoord = new THREE.Vector3(worldPos.x, worldPos.y, worldPos.z);
+          const neighborWorldCoord = new THREE.Vector3(centeredWorldPos.x, centeredWorldPos.y, centeredWorldPos.z);
           
-          // DISTANCE FILTER: Only keep neighbors that are close enough to at least one active cell
-          const isCloseToActiveCell = activeCells.some(activeCell => {
-            const distance = neighborWorldCoord.distanceTo(activeCell.worldCoord);
-            const maxDistance = 0.57; // Adjusted for proper FCC neighbor distance (~0.566)
-            console.log(`  Distance check: neighbor at (${neighborWorldCoord.x.toFixed(2)},${neighborWorldCoord.y.toFixed(2)},${neighborWorldCoord.z.toFixed(2)}) to active at (${activeCell.worldCoord.x.toFixed(2)},${activeCell.worldCoord.y.toFixed(2)},${activeCell.worldCoord.z.toFixed(2)}) = ${distance.toFixed(3)}, max=${maxDistance}`);
-            return distance <= maxDistance;
-          });
-          
-          if (isCloseToActiveCell) {
-            const neighborRecord: CellRecord = {
-              engineCoord: neighborCoord, // KEEP original integer coordinate
-              worldCoord: neighborWorldCoord,
-              id: `neighbor_${key}_${Date.now()}`
-            };
-            neighborMap.set(key, neighborRecord);
-          }
+          // No distance filtering needed for rhombohedral lattice - all 6 neighbors are valid
+          const neighborRecord: CellRecord = {
+            engineCoord: neighborCoord, // KEEP original integer coordinate
+            worldCoord: neighborWorldCoord,
+            id: `neighbor_${key}_${Date.now()}`
+          };
+          neighborMap.set(key, neighborRecord);
+          console.log(`    ADDED to neighbor map (rhombohedral neighbor)`);
+        } else {
+          console.log(`    SKIPPED: isActive=${isActiveCell} inMap=${alreadyInMap}`);
         }
       });
+      
+      console.log(`Cell ${cellIndex} contributed ${validNeighborsForThisCell} valid neighbors to the map`);
     });
     
     const neighborRecords = Array.from(neighborMap.values());
@@ -407,6 +450,12 @@ export default function ShapeEditor3D({
     });
     neighborSpheresRef.current = [];
 
+    // Clear existing debug neighbor spheres
+    debugNeighborSpheresRef.current.forEach(sphere => {
+      sceneRef.current!.remove(sphere);
+    });
+    debugNeighborSpheresRef.current = [];
+
     // Create invisible spheres at neighbor positions for raycasting
     neighborRecords.forEach(neighborRecord => {
       const geometry = new THREE.SphereGeometry(0.4, 8, 6); // Larger radius for easier mobile tapping
@@ -424,10 +473,42 @@ export default function ShapeEditor3D({
       
       sceneRef.current!.add(neighborSphere);
       neighborSpheresRef.current.push(neighborSphere);
+
+      // Create small red debug sphere (10% of normal diameter = 0.0283 radius)
+      const debugGeometry = new THREE.SphereGeometry(0.0283, 8, 6);
+      const debugMaterial = new THREE.MeshBasicMaterial({ 
+        color: 0xff0000, // Bright red color
+        transparent: false,
+        depthWrite: true
+      });
+      
+      const debugSphere = new THREE.Mesh(debugGeometry, debugMaterial);
+      debugSphere.position.copy(neighborRecord.worldCoord);
+      
+      // Mark as debug sphere for identification
+      debugSphere.userData = { isDebugNeighbor: true };
+      
+      // Debug spheres disabled - neighbor issue fixed
+      debugSphere.visible = false;
+      
+      sceneRef.current!.add(debugSphere);
+      debugNeighborSpheresRef.current.push(debugSphere);
+      
+      console.log(`Created debug sphere at Engine(${neighborRecord.engineCoord.x},${neighborRecord.engineCoord.y},${neighborRecord.engineCoord.z}) -> World(${neighborRecord.worldCoord.x.toFixed(2)},${neighborRecord.worldCoord.y.toFixed(2)},${neighborRecord.worldCoord.z.toFixed(2)})`);
     });
 
     console.log(`Created ${neighborSpheresRef.current.length} invisible neighbor spheres for raycasting`);
-  }, [neighborRecords]);
+    console.log(`Created ${debugNeighborSpheresRef.current.length} red debug spheres for neighbor visualization`);
+    console.log(`Debug spheres visibility set to: ${editMode === 'add'} (editMode: ${editMode})`);
+  }, [neighborRecords, editMode]);
+
+  // Debug spheres disabled - neighbor issue fixed with rhombohedral lattice
+  useEffect(() => {
+    // Always hide debug spheres
+    debugNeighborSpheresRef.current.forEach((debugSphere, index) => {
+      debugSphere.visible = false;
+    });
+  }, [editMode]);
 
   // Update spheres when CellRecords change
   useEffect(() => {
