@@ -82,13 +82,13 @@ export default function ShapeEditor3D({
 
   // Helper function to create preview sphere
   const createPreviewSphere = () => {
-    const geometry = new THREE.SphereGeometry(0.28, 32, 24);
+    const geometry = new THREE.SphereGeometry(0.283, 32, 24);
     const material = new THREE.MeshStandardMaterial({
-      color: 0x00ff00, // Green for add mode
+      color: parseInt(settings.material.color.replace('#', '0x')),
       transparent: true,
-      opacity: 0.5,
-      metalness: 0.0,
-      roughness: 0.8
+      opacity: 0.7, // Slightly transparent to indicate it's a preview
+      metalness: settings.material.metalness,
+      roughness: 1 - settings.material.reflectiveness
     });
     return new THREE.Mesh(geometry, material);
   };
@@ -101,7 +101,7 @@ export default function ShapeEditor3D({
       previewSphereRef.current = null;
     }
     
-    // Restore original material for hovered sphere
+    // Restore original material for hovered sphere (for delete mode)
     if (hoveredSphereRef.current && originalMaterialRef.current) {
       hoveredSphereRef.current.material = originalMaterialRef.current;
       hoveredSphereRef.current = null;
@@ -186,7 +186,7 @@ export default function ShapeEditor3D({
           // DISTANCE FILTER: Only keep neighbors that are close enough to at least one active cell
           const isCloseToActiveCell = activeCells.some(activeCell => {
             const distance = neighborWorldCoord.distanceTo(activeCell.worldCoord);
-            const maxDistance = 0.6; // Tighter threshold - should be ~0.4 for adjacent FCC cells
+            const maxDistance = 0.57; // Adjusted for proper FCC neighbor distance (~0.566)
             console.log(`  Distance check: neighbor at (${neighborWorldCoord.x.toFixed(2)},${neighborWorldCoord.y.toFixed(2)},${neighborWorldCoord.z.toFixed(2)}) to active at (${activeCell.worldCoord.x.toFixed(2)},${activeCell.worldCoord.y.toFixed(2)},${activeCell.worldCoord.z.toFixed(2)}) = ${distance.toFixed(3)}, max=${maxDistance}`);
             return distance <= maxDistance;
           });
@@ -420,7 +420,7 @@ export default function ShapeEditor3D({
     cellRecords.forEach((record) => {
       console.log(`Adding sphere: Engine(${record.engineCoord.x},${record.engineCoord.y},${record.engineCoord.z}) -> World(${record.worldCoord.x.toFixed(2)},${record.worldCoord.y.toFixed(2)},${record.worldCoord.z.toFixed(2)})`);
       
-      const geometry = new THREE.SphereGeometry(0.28, 32, 32);
+      const geometry = new THREE.SphereGeometry(0.283, 32, 32);
       const material = new THREE.MeshStandardMaterial({
         color: 0x4a90e2,
         metalness: settings.material.metalness,
@@ -593,19 +593,20 @@ export default function ShapeEditor3D({
     clearHoverEffects();
 
     if (editMode === 'delete') {
-      // DELETE MODE: Only highlight existing spheres for deletion
+      // DELETE MODE: Make sphere 80% transparent to preview deletion
       const intersects = raycaster.intersectObjects(spheresRef.current);
       if (intersects.length > 0) {
         const hoveredSphere = intersects[0].object as THREE.Mesh;
         
-        // Store original material and make sphere semi-transparent red
+        // Store original material and make sphere 80% transparent
         originalMaterialRef.current = hoveredSphere.material;
+        const originalMat = hoveredSphere.material as THREE.MeshStandardMaterial;
         const deleteMaterial = new THREE.MeshStandardMaterial({
-          color: 0xff0000, // Red
+          color: originalMat.color.getHex(),
           transparent: true,
-          opacity: 0.5,
-          metalness: settings.material.metalness,
-          roughness: 1 - settings.material.reflectiveness
+          opacity: 0.2, // 80% transparent (20% opacity)
+          metalness: originalMat.metalness,
+          roughness: originalMat.roughness
         });
         
         hoveredSphere.material = deleteMaterial;

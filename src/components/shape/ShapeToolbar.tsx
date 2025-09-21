@@ -63,7 +63,25 @@ export default function ShapeToolbar({
               opacity: loading ? 0.6 : 1
             }}
           >
-            Browse Library
+            Browse shapes
+          </button>
+          
+          <button
+            onClick={onSave}
+            disabled={loading || cellCount === 0}
+            style={{
+              padding: '8px 16px',
+              backgroundColor: cellCount === 0 ? '#6c757d' : '#28a745',
+              color: 'white',
+              border: 'none',
+              borderRadius: '6px',
+              fontSize: '14px',
+              fontWeight: '500',
+              cursor: (loading || cellCount === 0) ? 'not-allowed' : 'pointer',
+              opacity: (loading || cellCount === 0) ? 0.6 : 1
+            }}
+          >
+            Save shape
           </button>
           
           <button
@@ -85,24 +103,6 @@ export default function ShapeToolbar({
             title="Settings"
           >
             ⚙️
-          </button>
-          
-          <button
-            onClick={onSave}
-            disabled={loading || cellCount === 0}
-            style={{
-              padding: '8px 16px',
-              backgroundColor: cellCount === 0 ? '#6c757d' : '#28a745',
-              color: 'white',
-              border: 'none',
-              borderRadius: '6px',
-              fontSize: '14px',
-              fontWeight: '500',
-              cursor: (loading || cellCount === 0) ? 'not-allowed' : 'pointer',
-              opacity: (loading || cellCount === 0) ? 0.6 : 1
-            }}
-          >
-            Save
           </button>
         </div>
 
