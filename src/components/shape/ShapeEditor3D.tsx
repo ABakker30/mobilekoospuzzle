@@ -52,6 +52,8 @@ export default function ShapeEditor3D({
   // New CellRecord-based state management
   const [cellRecords, setCellRecords] = useState<CellRecord[]>([]);
   const [neighborRecords, setNeighborRecords] = useState<CellRecord[]>([]);
+  const [pendingAddPosition, setPendingAddPosition] = useState<CellRecord | null>(null);
+  const neighborSpheresRef = useRef<THREE.Mesh[]>([]);
 
   // Helper function to convert focal length to FOV
   const focalLengthToFOV = (focalLength: number): number => {
@@ -86,7 +88,7 @@ export default function ShapeEditor3D({
     const material = new THREE.MeshStandardMaterial({
       color: parseInt(settings.material.color.replace('#', '0x')),
       transparent: true,
-      opacity: 0.7, // Slightly transparent to indicate it's a preview
+      opacity: Math.max(0.7, 1 - settings.material.transparency), // Use user transparency but ensure it's visible as preview
       metalness: settings.material.metalness,
       roughness: 1 - settings.material.reflectiveness
     });
@@ -107,6 +109,9 @@ export default function ShapeEditor3D({
       hoveredSphereRef.current = null;
       originalMaterialRef.current = null;
     }
+    
+    // Clear pending add position
+    setPendingAddPosition(null);
   };
 
   // Transform engine coordinates to world coordinates with all viewing transformations
@@ -392,6 +397,38 @@ export default function ShapeEditor3D({
     setNeighborRecords(newNeighborRecords);
   }, [coordinates]);
 
+  // Update invisible neighbor spheres for raycasting when neighborRecords change
+  useEffect(() => {
+    if (!sceneRef.current) return;
+
+    // Clear existing neighbor spheres
+    neighborSpheresRef.current.forEach(sphere => {
+      sceneRef.current!.remove(sphere);
+    });
+    neighborSpheresRef.current = [];
+
+    // Create invisible spheres at neighbor positions for raycasting
+    neighborRecords.forEach(neighborRecord => {
+      const geometry = new THREE.SphereGeometry(0.283, 8, 6); // Lower detail for invisible spheres
+      const material = new THREE.MeshBasicMaterial({ 
+        transparent: true, 
+        opacity: 0, // Completely invisible
+        depthWrite: false // Don't interfere with depth buffer
+      });
+      
+      const neighborSphere = new THREE.Mesh(geometry, material);
+      neighborSphere.position.copy(neighborRecord.worldCoord);
+      
+      // Store the neighbor record for easy access
+      (neighborSphere as any).neighborRecord = neighborRecord;
+      
+      sceneRef.current!.add(neighborSphere);
+      neighborSpheresRef.current.push(neighborSphere);
+    });
+
+    console.log(`Created ${neighborSpheresRef.current.length} invisible neighbor spheres for raycasting`);
+  }, [neighborRecords]);
+
   // Update spheres when CellRecords change
   useEffect(() => {
     if (!sceneRef.current || !cameraRef.current || !controlsRef.current) {
@@ -412,7 +449,12 @@ export default function ShapeEditor3D({
     });
     spheresRef.current = [];
     
-    // Keep debug neighbor spheres - don't clear them here
+    // Clear any debug neighbor spheres that might exist
+    sceneRef.current.children.forEach(child => {
+      if (child.userData && child.userData.isDebugNeighbor) {
+        sceneRef.current!.remove(child);
+      }
+    });
 
     if (cellRecords.length === 0) return;
     
@@ -422,7 +464,9 @@ export default function ShapeEditor3D({
       
       const geometry = new THREE.SphereGeometry(0.283, 32, 32);
       const material = new THREE.MeshStandardMaterial({
-        color: 0x4a90e2,
+        color: parseInt(settings.material.color.replace('#', '0x')),
+        transparent: settings.material.transparency > 0,
+        opacity: 1 - settings.material.transparency,
         metalness: settings.material.metalness,
         roughness: 1 - settings.material.reflectiveness,
         envMapIntensity: 1.0
@@ -556,6 +600,27 @@ export default function ShapeEditor3D({
         material.needsUpdate = true;
       }
     });
+
+    // Update preview sphere material if it exists
+    if (previewSphereRef.current && previewSphereRef.current.material instanceof THREE.MeshStandardMaterial) {
+      const previewMaterial = previewSphereRef.current.material;
+      
+      // Update color
+      previewMaterial.color.setHex(parseInt(settings.material.color.replace('#', '0x')));
+      
+      // Update transparency (ensure it's visible as preview)
+      previewMaterial.transparent = true;
+      previewMaterial.opacity = Math.max(0.7, 1 - settings.material.transparency);
+      
+      // Update metalness
+      previewMaterial.metalness = settings.material.metalness;
+      
+      // Update roughness
+      previewMaterial.roughness = 1 - settings.material.reflectiveness;
+      
+      // Mark material as needing update
+      previewMaterial.needsUpdate = true;
+    }
   }, [settings]);
 
   // Mouse event handlers for add/delete functionality
@@ -613,38 +678,41 @@ export default function ShapeEditor3D({
         hoveredSphereRef.current = hoveredSphere;
       }
     } else if (editMode === 'add') {
-      // ADD MODE - Using CellRecord system
+      // ADD MODE - Two-stage process: hover shows preview, click confirms
       if (cellRecords.length === 0) {
-        // First cell - place at origin
+        // First cell - show preview at origin
         const previewSphere = createPreviewSphere();
         previewSphere.position.set(0, 0, 0);
         sceneRef.current.add(previewSphere);
         previewSphereRef.current = previewSphere;
+        setPendingAddPosition({ 
+          engineCoord: { x: 0, y: 0, z: 0 }, 
+          worldCoord: new THREE.Vector3(0, 0, 0), 
+          id: 'pending_origin' 
+        });
         console.log(`First cell preview at origin`);
       } else {
-        // Find closest neighbor record to mouse
-        const sphereRadius = 0.4;
+        // Use raycasting to find intersected neighbor spheres
+        const intersects = raycaster.intersectObjects(neighborSpheresRef.current);
         
-        let closestNeighborRecord: CellRecord | null = null;
-        let closestDistance = Infinity;
-        
-        for (const neighborRecord of neighborRecords) {
-          const distance = raycaster.ray.distanceToPoint(neighborRecord.worldCoord);
+        if (intersects.length > 0) {
+          // Get the closest intersected neighbor sphere
+          const intersectedSphere = intersects[0].object as THREE.Mesh;
+          const neighborRecord = (intersectedSphere as any).neighborRecord as CellRecord;
           
-          if (distance < sphereRadius && distance < closestDistance) {
-            closestDistance = distance;
-            closestNeighborRecord = neighborRecord;
+          if (neighborRecord) {
+            // Show preview sphere at exact neighbor position
+            const previewSphere = createPreviewSphere();
+            previewSphere.position.copy(neighborRecord.worldCoord);
+            sceneRef.current.add(previewSphere);
+            previewSphereRef.current = previewSphere;
+            setPendingAddPosition(neighborRecord);
+            
+            console.log(`Preview at exact neighbor Engine(${neighborRecord.engineCoord.x},${neighborRecord.engineCoord.y},${neighborRecord.engineCoord.z}) -> World(${neighborRecord.worldCoord.x.toFixed(2)},${neighborRecord.worldCoord.y.toFixed(2)},${neighborRecord.worldCoord.z.toFixed(2)})`);
           }
-        }
-        
-        // Show preview sphere at closest neighbor record
-        if (closestNeighborRecord) {
-          const previewSphere = createPreviewSphere();
-          previewSphere.position.copy(closestNeighborRecord.worldCoord);
-          sceneRef.current.add(previewSphere);
-          previewSphereRef.current = previewSphere;
-          
-          console.log(`Preview at Engine(${closestNeighborRecord.engineCoord.x},${closestNeighborRecord.engineCoord.y},${closestNeighborRecord.engineCoord.z}) -> World(${closestNeighborRecord.worldCoord.x.toFixed(2)},${closestNeighborRecord.worldCoord.y.toFixed(2)},${closestNeighborRecord.worldCoord.z.toFixed(2)})`);
+        } else {
+          // No neighbor intersection - clear any pending add
+          setPendingAddPosition(null);
         }
       }
     }
@@ -687,35 +755,18 @@ export default function ShapeEditor3D({
         }
       }
     } else if (editMode === 'add') {
-      // ADD MODE CLICK - Using CellRecord system
-      if (cellRecords.length === 0) {
-        // First cell - add at origin (0,0,0)
-        console.log(`Adding first cell at origin`);
-        onCoordinatesChange([{ x: 0, y: 0, z: 0 }]);
+      // ADD MODE CLICK - Two-stage: only add if there's a pending position
+      if (pendingAddPosition) {
+        console.log(`Confirming add: Engine(${pendingAddPosition.engineCoord.x},${pendingAddPosition.engineCoord.y},${pendingAddPosition.engineCoord.z})`);
+        
+        // Add the engine coordinate to the original coordinates array
+        const newCoordinates = [...coordinates, pendingAddPosition.engineCoord];
+        onCoordinatesChange(newCoordinates);
+        
+        // Clear the pending position
+        setPendingAddPosition(null);
       } else {
-        // Find same neighbor record as preview logic
-        const sphereRadius = 0.4;
-        
-        let closestNeighborRecord: CellRecord | null = null;
-        let closestDistance = Infinity;
-        
-        for (const neighborRecord of neighborRecords) {
-          const distance = raycaster.ray.distanceToPoint(neighborRecord.worldCoord);
-          
-          if (distance < sphereRadius && distance < closestDistance) {
-            closestDistance = distance;
-            closestNeighborRecord = neighborRecord;
-          }
-        }
-        
-        // Add the neighbor cell to state
-        if (closestNeighborRecord) {
-          console.log(`Adding neighbor: Engine(${closestNeighborRecord.engineCoord.x},${closestNeighborRecord.engineCoord.y},${closestNeighborRecord.engineCoord.z})`);
-          
-          // Add the engine coordinate to the original coordinates array
-          const newCoordinates = [...coordinates, closestNeighborRecord.engineCoord];
-          onCoordinatesChange(newCoordinates);
-        }
+        console.log(`No pending add position - click ignored`);
       }
     }
 
