@@ -47,9 +47,17 @@ const SolutionEditor3D = forwardRef<SolutionEditor3DRef, SolutionEditor3DProps>(
     
     // Camera setup
     const aspect = containerRef.current.clientWidth / containerRef.current.clientHeight;
+    
+    // Convert focal length to FOV (Field of View)
+    // FOV = 2 * arctan(sensor_height / (2 * focal_length)) * (180/π)
+    // Using 35mm sensor height (24mm) as standard
+    const fovFromFocalLength = (focalLength: number) => {
+      return 2 * Math.atan(24 / (2 * focalLength)) * (180 / Math.PI);
+    };
+    
     const camera = settings.camera.orthographic
       ? new THREE.OrthographicCamera(-10 * aspect, 10 * aspect, 10, -10, 0.1, 1000)
-      : new THREE.PerspectiveCamera(settings.camera.focalLength, aspect, 0.1, 1000);
+      : new THREE.PerspectiveCamera(fovFromFocalLength(settings.camera.focalLength), aspect, 0.1, 1000);
     
     camera.position.set(15, 15, 15); // Move camera further back
     camera.lookAt(0, 0, 0);
@@ -143,6 +151,100 @@ const SolutionEditor3D = forwardRef<SolutionEditor3DRef, SolutionEditor3DProps>(
       });
     }
   }, [settings.brightness]);
+
+  // Update material properties (metalness, reflectiveness, transparency)
+  useEffect(() => {
+    if (sceneRef.current) {
+      sceneRef.current.traverse((child) => {
+        if (child instanceof THREE.Mesh && child.material instanceof THREE.MeshLambertMaterial) {
+          // Convert MeshLambertMaterial to MeshStandardMaterial for PBR properties
+          const oldMaterial = child.material;
+          const newMaterial = new THREE.MeshStandardMaterial({
+            color: oldMaterial.color,
+            transparent: oldMaterial.transparent,
+            opacity: Math.max(0.1, 1.0 - settings.transparency), // Invert transparency (0 = opaque, 1 = transparent)
+            metalness: settings.metalness,
+            roughness: 1.0 - settings.reflectiveness // Invert reflectiveness (0 = rough, 1 = smooth)
+          });
+          
+          child.material = newMaterial;
+          oldMaterial.dispose();
+        } else if (child instanceof THREE.Mesh && child.material instanceof THREE.MeshStandardMaterial) {
+          // Update existing MeshStandardMaterial
+          child.material.opacity = Math.max(0.1, 1.0 - settings.transparency);
+          child.material.metalness = settings.metalness;
+          child.material.roughness = 1.0 - settings.reflectiveness;
+          child.material.needsUpdate = true;
+        }
+      });
+    }
+  }, [settings.metalness, settings.reflectiveness, settings.transparency]);
+
+  // Update camera properties (focal length only - orthographic switching requires full recreation)
+  useEffect(() => {
+    if (!cameraRef.current || !containerRef.current) return;
+
+    // Convert focal length to FOV
+    const fovFromFocalLength = (focalLength: number) => {
+      return 2 * Math.atan(24 / (2 * focalLength)) * (180 / Math.PI);
+    };
+
+    // Only update FOV for perspective cameras (don't recreate camera)
+    if (cameraRef.current instanceof THREE.PerspectiveCamera && !settings.camera.orthographic) {
+      const newFov = fovFromFocalLength(settings.camera.focalLength);
+      cameraRef.current.fov = newFov;
+      cameraRef.current.updateProjectionMatrix();
+      
+      // Trigger a render
+      if (rendererRef.current && sceneRef.current) {
+        rendererRef.current.render(sceneRef.current, cameraRef.current);
+      }
+    }
+  }, [settings.camera.focalLength]);
+
+  // Handle orthographic mode switching (requires camera recreation)
+  useEffect(() => {
+    if (!cameraRef.current || !containerRef.current || !controlsRef.current) return;
+
+    const aspect = containerRef.current.clientWidth / containerRef.current.clientHeight;
+    
+    // Convert focal length to FOV
+    const fovFromFocalLength = (focalLength: number) => {
+      return 2 * Math.atan(24 / (2 * focalLength)) * (180 / Math.PI);
+    };
+
+    // Check if we need to switch camera types
+    const isCurrentlyOrthographic = cameraRef.current instanceof THREE.OrthographicCamera;
+    const shouldBeOrthographic = settings.camera.orthographic;
+
+    if (isCurrentlyOrthographic !== shouldBeOrthographic) {
+      // Store current camera state
+      const currentPosition = cameraRef.current.position.clone();
+      const currentTarget = controlsRef.current.target.clone();
+
+      // Create new camera of the correct type
+      const newCamera = shouldBeOrthographic
+        ? new THREE.OrthographicCamera(-10 * aspect, 10 * aspect, 10, -10, 0.1, 1000)
+        : new THREE.PerspectiveCamera(fovFromFocalLength(settings.camera.focalLength), aspect, 0.1, 1000);
+
+      // Restore position and target
+      newCamera.position.copy(currentPosition);
+      newCamera.lookAt(currentTarget);
+      
+      // Update camera reference
+      cameraRef.current = newCamera;
+      
+      // Update controls to use new camera
+      controlsRef.current.object = newCamera;
+      controlsRef.current.target.copy(currentTarget);
+      controlsRef.current.update();
+
+      // Trigger a render
+      if (rendererRef.current && sceneRef.current) {
+        rendererRef.current.render(sceneRef.current, newCamera);
+      }
+    }
+  }, [settings.camera.orthographic]);
   
   // Calculate optimal sphere radius based on shortest distance between spheres in world coordinates
   const calculateOptimalSphereRadius = (): number => {
@@ -227,10 +329,12 @@ const SolutionEditor3D = forwardRef<SolutionEditor3DRef, SolutionEditor3DProps>(
       pieceGroup.visible = piece.visible;
       
       // Create material for this piece
-      const material = new THREE.MeshLambertMaterial({
+      const material = new THREE.MeshStandardMaterial({
         color: new THREE.Color(piece.color),
         transparent: true,
-        opacity: 0.9
+        opacity: Math.max(0.1, 1.0 - settings.transparency),
+        metalness: settings.metalness,
+        roughness: 1.0 - settings.reflectiveness
       });
       
       // Create high-quality spheres for each cell in the piece

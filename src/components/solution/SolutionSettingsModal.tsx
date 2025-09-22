@@ -1,8 +1,8 @@
 // Solution Settings Modal Component
-// Settings for piece colors, visibility slider, and display options
+// Comprehensive settings matching Puzzle Shape page style
 
 import React, { useState, useRef, useEffect } from 'react';
-import { SolutionFile, SolutionSettings } from '../../types/solution';
+import { SolutionFile, SolutionSettings, DEFAULT_PIECE_COLORS } from '../../types/solution';
 
 interface SolutionSettingsModalProps {
   settings: SolutionSettings;
@@ -26,22 +26,6 @@ export default function SolutionSettingsModal({
   const pieceList = Object.keys(solution.piecesUsed).sort();
   const totalPieces = pieceList.length;
   
-  // Add CSS animation for modal
-  useEffect(() => {
-    const style = document.createElement('style');
-    style.textContent = `
-      @keyframes modalFadeIn {
-        from { opacity: 0; transform: scale(0.9); }
-        to { opacity: 1; transform: scale(1); }
-      }
-    `;
-    document.head.appendChild(style);
-    
-    return () => {
-      document.head.removeChild(style);
-    };
-  }, []);
-  
   const updateSettings = (updates: Partial<SolutionSettings>) => {
     onSettingsChange({ ...settings, ...updates });
   };
@@ -50,6 +34,10 @@ export default function SolutionSettingsModal({
     updateSettings({
       pieceColors: { ...settings.pieceColors, [pieceId]: color }
     });
+  };
+
+  const updateCamera = (updates: Partial<{ orthographic: boolean; focalLength: number }>) => {
+    updateSettings({ camera: { ...settings.camera, ...updates } });
   };
   
   const handleMouseDown = (e: React.MouseEvent) => {
@@ -61,12 +49,11 @@ export default function SolutionSettingsModal({
   };
   
   const handleMouseMove = (e: MouseEvent) => {
-    if (isDragging) {
-      setPosition({
-        x: e.clientX - dragStart.x,
-        y: e.clientY - dragStart.y
-      });
-    }
+    if (!isDragging) return;
+    setPosition({
+      x: e.clientX - dragStart.x,
+      y: e.clientY - dragStart.y
+    });
   };
   
   const handleMouseUp = () => {
@@ -91,26 +78,26 @@ export default function SolutionSettingsModal({
       left: 0,
       right: 0,
       bottom: 0,
-      backgroundColor: 'rgba(0, 0, 0, 0.5)',
-      display: 'flex',
-      alignItems: 'center',
-      justifyContent: 'center',
+      backgroundColor: 'rgba(0, 0, 0, 0.3)',
       zIndex: 2000,
-      pointerEvents: 'auto'
+      pointerEvents: 'none'
     }}>
-      <div
+      <div 
         ref={modalRef}
         style={{
-          width: '90%',
-          maxWidth: '500px',
-          maxHeight: '80vh',
+          position: 'absolute',
+          top: `calc(25% + ${position.y}px)`,
+          left: `calc(50% + ${position.x}px)`,
+          transform: 'translate(-50%, -50%)',
           backgroundColor: 'white',
+          color: 'black',
           borderRadius: '12px',
-          boxShadow: '0 20px 60px rgba(0, 0, 0, 0.3)',
+          width: '420px',
+          height: '60vh',
+          maxHeight: '600px',
           display: 'flex',
           flexDirection: 'column',
-          transform: `translate(${position.x}px, ${position.y}px)`,
-          animation: 'modalFadeIn 0.2s ease-out',
+          boxShadow: '0 10px 25px rgba(0, 0, 0, 0.2)',
           pointerEvents: 'auto',
           cursor: isDragging ? 'grabbing' : 'default'
         }}>
@@ -157,94 +144,10 @@ export default function SolutionSettingsModal({
           minHeight: 0
         }}>
           
-          {/* Piece Visibility Section */}
+          {/* Appearance Section */}
           <div style={{ marginBottom: '24px' }}>
             <h3 style={{ margin: '0 0 16px 0', fontSize: '16px', fontWeight: '600' }}>
-              🔍 Piece Visibility
-            </h3>
-            
-            <div style={{ marginBottom: '16px' }}>
-              <label style={{ display: 'block', marginBottom: '8px', fontSize: '14px' }}>
-                Visible Pieces: {settings.visiblePieceCount} of {totalPieces}
-              </label>
-              <input
-                type="range"
-                min="0"
-                max={totalPieces}
-                step="1"
-                value={settings.visiblePieceCount}
-                onChange={(e) => updateSettings({ visiblePieceCount: parseInt(e.target.value) })}
-                style={{ width: '100%' }}
-              />
-              <div style={{ 
-                display: 'flex', 
-                justifyContent: 'space-between', 
-                fontSize: '12px', 
-                color: '#666',
-                marginTop: '4px'
-              }}>
-                <span>None</span>
-                <span>All ({totalPieces})</span>
-              </div>
-            </div>
-          </div>
-
-          {/* Piece Colors Section */}
-          <div style={{ marginBottom: '24px' }}>
-            <h3 style={{ margin: '0 0 16px 0', fontSize: '16px', fontWeight: '600' }}>
-              🎨 Piece Colors
-            </h3>
-            
-            <div style={{
-              display: 'grid',
-              gridTemplateColumns: 'repeat(auto-fill, minmax(120px, 1fr))',
-              gap: '12px',
-              maxHeight: '200px',
-              overflowY: 'auto',
-              padding: '8px',
-              border: '1px solid #e9ecef',
-              borderRadius: '6px',
-              backgroundColor: '#f8f9fa'
-            }}>
-              {pieceList.map((pieceId) => (
-                <div key={pieceId} style={{
-                  display: 'flex',
-                  flexDirection: 'column',
-                  alignItems: 'center',
-                  gap: '4px',
-                  padding: '8px',
-                  backgroundColor: 'white',
-                  borderRadius: '6px',
-                  border: '1px solid #e9ecef'
-                }}>
-                  <label style={{ 
-                    fontSize: '12px', 
-                    fontWeight: '600',
-                    color: '#333'
-                  }}>
-                    {pieceId}
-                  </label>
-                  <input
-                    type="color"
-                    value={settings.pieceColors[pieceId] || '#888888'}
-                    onChange={(e) => updatePieceColor(pieceId, e.target.value)}
-                    style={{
-                      width: '40px',
-                      height: '30px',
-                      border: 'none',
-                      borderRadius: '4px',
-                      cursor: 'pointer'
-                    }}
-                  />
-                </div>
-              ))}
-            </div>
-          </div>
-
-          {/* Display Settings Section */}
-          <div style={{ marginBottom: '24px' }}>
-            <h3 style={{ margin: '0 0 16px 0', fontSize: '16px', fontWeight: '600' }}>
-              🖥️ Display
+              🎨 Appearance
             </h3>
             
             {/* Background Color */}
@@ -288,6 +191,114 @@ export default function SolutionSettingsModal({
             </div>
           </div>
 
+          {/* Material Properties Section */}
+          <div style={{ marginBottom: '24px' }}>
+            <h3 style={{ margin: '0 0 16px 0', fontSize: '16px', fontWeight: '600' }}>
+              ✨ Material Properties
+            </h3>
+            
+            {/* Metalness */}
+            <div style={{ marginBottom: '16px' }}>
+              <label style={{ display: 'block', marginBottom: '8px', fontSize: '14px' }}>
+                Metalness: {settings.metalness?.toFixed(2) || '0.00'}
+              </label>
+              <input
+                type="range"
+                min="0"
+                max="1"
+                step="0.01"
+                value={settings.metalness || 0}
+                onChange={(e) => updateSettings({ metalness: parseFloat(e.target.value) })}
+                style={{ width: '100%' }}
+              />
+            </div>
+
+            {/* Reflectiveness */}
+            <div style={{ marginBottom: '16px' }}>
+              <label style={{ display: 'block', marginBottom: '8px', fontSize: '14px' }}>
+                Reflectiveness: {settings.reflectiveness?.toFixed(2) || '0.00'}
+              </label>
+              <input
+                type="range"
+                min="0"
+                max="1"
+                step="0.01"
+                value={settings.reflectiveness || 0}
+                onChange={(e) => updateSettings({ reflectiveness: parseFloat(e.target.value) })}
+                style={{ width: '100%' }}
+              />
+            </div>
+
+            {/* Transparency */}
+            <div style={{ marginBottom: '16px' }}>
+              <label style={{ display: 'block', marginBottom: '8px', fontSize: '14px' }}>
+                Transparency: {settings.transparency?.toFixed(2) || '0.00'}
+              </label>
+              <input
+                type="range"
+                min="0"
+                max="1"
+                step="0.01"
+                value={settings.transparency || 0}
+                onChange={(e) => updateSettings({ transparency: parseFloat(e.target.value) })}
+                style={{ width: '100%' }}
+              />
+            </div>
+          </div>
+
+          {/* Piece Colors Section */}
+          <div style={{ marginBottom: '24px' }}>
+            <h3 style={{ margin: '0 0 16px 0', fontSize: '16px', fontWeight: '600' }}>
+              🌈 Piece Colors
+            </h3>
+            
+            {/* Individual Piece Colors */}
+            <div style={{
+              display: 'grid',
+              gridTemplateColumns: 'repeat(auto-fill, minmax(80px, 1fr))',
+              gap: '8px',
+              maxHeight: '200px',
+              overflowY: 'auto',
+              padding: '8px',
+              border: '1px solid #e9ecef',
+              borderRadius: '6px',
+              backgroundColor: '#f8f9fa'
+            }}>
+              {pieceList.map((pieceId) => (
+                <div key={pieceId} style={{
+                  display: 'flex',
+                  flexDirection: 'column',
+                  alignItems: 'center',
+                  gap: '4px',
+                  padding: '6px',
+                  backgroundColor: 'white',
+                  borderRadius: '4px',
+                  border: '1px solid #e9ecef'
+                }}>
+                  <label style={{ 
+                    fontSize: '11px', 
+                    fontWeight: '600',
+                    color: '#333'
+                  }}>
+                    {pieceId}
+                  </label>
+                  <input
+                    type="color"
+                    value={settings.pieceColors[pieceId] || '#888888'}
+                    onChange={(e) => updatePieceColor(pieceId, e.target.value)}
+                    style={{
+                      width: '30px',
+                      height: '25px',
+                      border: 'none',
+                      borderRadius: '3px',
+                      cursor: 'pointer'
+                    }}
+                  />
+                </div>
+              ))}
+            </div>
+          </div>
+
           {/* Camera Settings Section */}
           <div style={{ marginBottom: '24px' }}>
             <h3 style={{ margin: '0 0 16px 0', fontSize: '16px', fontWeight: '600' }}>
@@ -305,9 +316,7 @@ export default function SolutionSettingsModal({
                 <input
                   type="checkbox"
                   checked={settings.camera.orthographic}
-                  onChange={(e) => updateSettings({ 
-                    camera: { ...settings.camera, orthographic: e.target.checked }
-                  })}
+                  onChange={(e) => updateCamera({ orthographic: e.target.checked })}
                 />
                 Orthographic View
               </label>
@@ -324,40 +333,12 @@ export default function SolutionSettingsModal({
                   max="200"
                   step="5"
                   value={settings.camera.focalLength}
-                  onChange={(e) => updateSettings({ 
-                    camera: { ...settings.camera, focalLength: parseInt(e.target.value) }
-                  })}
+                  onChange={(e) => updateCamera({ focalLength: parseInt(e.target.value) })}
                   style={{ width: '100%' }}
                 />
               </div>
             )}
           </div>
-        </div>
-
-        {/* Footer */}
-        <div style={{
-          flexShrink: 0,
-          padding: '16px 20px',
-          borderTop: '1px solid #e9ecef',
-          display: 'flex',
-          justifyContent: 'flex-end',
-          backgroundColor: 'white'
-        }}>
-          <button
-            onClick={onClose}
-            style={{
-              padding: '8px 16px',
-              backgroundColor: '#007bff',
-              color: 'white',
-              border: 'none',
-              borderRadius: '6px',
-              fontSize: '14px',
-              fontWeight: '500',
-              cursor: 'pointer'
-            }}
-          >
-            Done
-          </button>
         </div>
       </div>
     </div>

@@ -45,6 +45,9 @@ export default function SolutionViewerPage() {
       visiblePieceCount: 0,
       brightness: 1.0,
       backgroundColor: '#f0f0f0',
+      metalness: 0.0,
+      reflectiveness: 0.0,
+      transparency: 0.0,
       camera: {
         orthographic: false,
         focalLength: 50
@@ -173,65 +176,34 @@ export default function SolutionViewerPage() {
   
   return (
     <div style={{ 
-      height: '100dvh', 
-      display: 'flex', 
+      display: 'flex',
       flexDirection: 'column',
-      backgroundColor: settings.backgroundColor 
+      width: '100vw',
+      height: '100dvh',
+      margin: 0,
+      padding: 0,
+      fontFamily: 'system-ui, sans-serif',
+      boxSizing: 'border-box'
     }}>
-      {/* Navigation Header */}
-      <div style={{
-        padding: '8px 16px',
-        backgroundColor: 'white',
-        borderBottom: '1px solid #e9ecef',
-        display: 'flex',
-        alignItems: 'center',
-        gap: '16px',
-        flexShrink: 0
-      }}>
-        <Link 
-          to="/" 
-          style={{ 
-            textDecoration: 'none', 
-            color: '#007bff',
-            fontSize: '14px',
-            fontWeight: '500'
-          }}
-        >
-          ← Home
-        </Link>
-        <h1 style={{ 
-          margin: 0, 
-          fontSize: '18px', 
-          fontWeight: '600',
-          color: '#333'
-        }}>
-          🧩 Solution Viewer
-        </h1>
-        {solutionName && (
-          <span style={{
-            fontSize: '14px',
-            color: '#666',
-            backgroundColor: '#f8f9fa',
-            padding: '4px 8px',
-            borderRadius: '4px'
-          }}>
-            {solutionName}
-          </span>
-        )}
-      </div>
-      
-      {/* Main Content Area */}
-      <div style={{ flex: 1, position: 'relative', overflow: 'hidden' }}>
-        {/* Toolbar */}
+      <div style={{ flexShrink: 0 }}>
         <SolutionToolbar
           onLoadFile={handleSolutionLoad}
           onLoadFromUrl={handleSolutionLoadFromUrl}
           onSettings={handleSettings}
           loading={loading}
           hasSolution={!!solution}
+          solutionName={solutionName}
+          visiblePieceCount={settings.visiblePieceCount}
+          totalPieces={solution ? Object.keys(solution.piecesUsed).length : 0}
+          onVisibilityChange={(count) => setSettings(prev => ({ ...prev, visiblePieceCount: count }))}
         />
-        
-        {/* 3D Viewer */}
+      </div>
+      
+      <div style={{ 
+        flex: 1, 
+        position: 'relative',
+        backgroundColor: '#f0f0f0' // Container background (not 3D scene)
+      }}>
         {solution ? (
           <SolutionEditor3D
             ref={solutionEditorRef}
@@ -254,27 +226,62 @@ export default function SolutionViewerPage() {
             </p>
           </div>
         )}
-        
-        {/* Error Display */}
-        {error && (
-          <div style={{
-            position: 'absolute',
-            top: '80px',
-            left: '50%',
-            transform: 'translateX(-50%)',
-            backgroundColor: '#f8d7da',
-            color: '#721c24',
-            padding: '12px 16px',
-            borderRadius: '6px',
-            border: '1px solid #f5c6cb',
-            maxWidth: '400px',
-            textAlign: 'center',
-            zIndex: 1000
-          }}>
-            ❌ {error}
-          </div>
-        )}
       </div>
+      
+      {/* Back to Home - floating button */}
+      <Link 
+        to="/" 
+        style={{
+          position: 'fixed',
+          bottom: '20px',
+          left: '20px',
+          display: 'inline-block',
+          padding: '12px 16px',
+          backgroundColor: '#6c757d',
+          color: 'white',
+          textDecoration: 'none',
+          borderRadius: '25px',
+          fontSize: '14px',
+          fontWeight: '500',
+          boxShadow: '0 2px 8px rgba(0,0,0,0.2)',
+          zIndex: 1000
+        }}
+      >
+        ← Home
+      </Link>
+      
+      {/* Error display */}
+      {error && (
+        <div style={{
+          position: 'fixed',
+          top: '160px',
+          left: '20px',
+          right: '20px',
+          backgroundColor: '#f8d7da',
+          color: '#721c24',
+          padding: '12px',
+          borderRadius: '6px',
+          border: '1px solid #f5c6cb',
+          zIndex: 1000,
+          fontSize: '14px'
+        }}>
+          {error}
+          <button
+            onClick={() => setError('')}
+            style={{
+              float: 'right',
+              background: 'none',
+              border: 'none',
+              color: '#721c24',
+              fontSize: '16px',
+              cursor: 'pointer',
+              padding: '0 4px'
+            }}
+          >
+            ×
+          </button>
+        </div>
+      )}
       
       {/* Settings Modal */}
       {showSettings && solution && (

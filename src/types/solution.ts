@@ -43,40 +43,44 @@ export interface SolutionSettings {
   visiblePieceCount: number; // 0 to total pieces
   brightness: number;
   backgroundColor: string;
+  metalness: number; // 0.0 to 1.0
+  reflectiveness: number; // 0.0 to 1.0
+  transparency: number; // 0.0 to 1.0
   camera: {
     orthographic: boolean;
     focalLength: number;
   };
 }
 
-// Default piece colors (distinct colors for each piece)
+// Professional color palette for distinct piece visualization
+// Based on ColorBrewer qualitative palette optimized for accessibility
 export const DEFAULT_PIECE_COLORS: Record<string, string> = {
-  'A': '#FF0000', // Red
-  'B': '#00FF00', // Green  
-  'C': '#0000FF', // Blue
-  'D': '#FFFF00', // Yellow
-  'E': '#FF00FF', // Magenta
-  'F': '#00FFFF', // Cyan
-  'G': '#FFA500', // Orange
-  'H': '#800080', // Purple
-  'I': '#FFC0CB', // Pink
-  'J': '#A52A2A', // Brown
-  'K': '#808080', // Gray
-  'L': '#000080', // Navy
-  'M': '#008000', // Dark Green
-  'N': '#800000', // Maroon
-  'O': '#808000', // Olive
-  'P': '#FF6347', // Tomato
-  'Q': '#4682B4', // Steel Blue
-  'R': '#D2691E', // Chocolate
-  'S': '#FF1493', // Deep Pink
-  'T': '#00CED1', // Dark Turquoise
-  'U': '#FFD700', // Gold
-  'V': '#ADFF2F', // Green Yellow
-  'W': '#FF69B4', // Hot Pink
-  'X': '#CD853F', // Peru
-  'Y': '#DDA0DD', // Plum
-  'Z': '#98FB98'  // Pale Green
+  'A': '#e41a1c', // Vibrant Red
+  'B': '#377eb8', // Strong Blue
+  'C': '#4daf4a', // Fresh Green
+  'D': '#984ea3', // Rich Purple
+  'E': '#ff7f00', // Bright Orange
+  'F': '#ffff33', // Vivid Yellow
+  'G': '#a65628', // Warm Brown
+  'H': '#f781bf', // Soft Pink
+  'I': '#999999', // Neutral Gray
+  'J': '#1f78b4', // Deep Blue
+  'K': '#33a02c', // Forest Green
+  'L': '#e31a1c', // Crimson Red
+  'M': '#fdbf6f', // Light Orange
+  'N': '#ff7f00', // Tangerine
+  'O': '#cab2d6', // Lavender
+  'P': '#6a3d9a', // Deep Purple
+  'Q': '#b15928', // Chocolate
+  'R': '#fb9a99', // Light Pink
+  'S': '#a6cee3', // Sky Blue
+  'T': '#b2df8a', // Light Green
+  'U': '#ffd92f', // Golden Yellow
+  'V': '#e78ac3', // Rose Pink
+  'W': '#8dd3c7', // Mint Green
+  'X': '#bebada', // Pale Purple
+  'Y': '#fb8072', // Coral
+  'Z': '#80b1d3'  // Powder Blue
 };
 
 // Generate default solution settings
@@ -93,6 +97,9 @@ export function createDefaultSolutionSettings(piecesUsed: Record<string, number>
     visiblePieceCount: Object.keys(piecesUsed).length, // All pieces visible by default
     brightness: 1.0,
     backgroundColor: '#f0f0f0',
+    metalness: 0.0,
+    reflectiveness: 0.0,
+    transparency: 0.0,
     camera: {
       orthographic: false,
       focalLength: 50

@@ -9,6 +9,10 @@ interface SolutionToolbarProps {
   onSettings: () => void;
   loading: boolean;
   hasSolution: boolean;
+  solutionName: string;
+  visiblePieceCount: number;
+  totalPieces: number;
+  onVisibilityChange: (count: number) => void;
 }
 
 // Available solution files (can be expanded or loaded dynamically)
@@ -33,7 +37,11 @@ export default function SolutionToolbar({
   onLoadFromUrl,
   onSettings,
   loading,
-  hasSolution
+  hasSolution,
+  solutionName,
+  visiblePieceCount,
+  totalPieces,
+  onVisibilityChange
 }: SolutionToolbarProps) {
   const [showFileList, setShowFileList] = useState(false);
   const fileInputRef = useRef<HTMLInputElement>(null);
@@ -61,98 +69,138 @@ export default function SolutionToolbar({
   
   return (
     <div style={{
-      position: 'absolute',
-      top: '16px',
-      left: '16px',
-      zIndex: 1000,
+      backgroundColor: '#ffffff',
+      borderBottom: '1px solid #e0e0e0',
+      padding: '8px 12px',
       display: 'flex',
       flexDirection: 'column',
-      gap: '8px'
+      gap: '8px',
+      boxShadow: '0 2px 4px rgba(0,0,0,0.1)',
+      position: 'relative'
     }}>
-      {/* Main Toolbar */}
+      {/* Top row - Main actions and solution name */}
       <div style={{
         display: 'flex',
-        gap: '8px',
-        padding: '8px',
-        backgroundColor: 'white',
-        borderRadius: '8px',
-        boxShadow: '0 2px 8px rgba(0,0,0,0.1)',
-        border: '1px solid #e9ecef'
+        justifyContent: 'space-between',
+        alignItems: 'center',
+        flexWrap: 'wrap',
+        gap: '6px'
       }}>
-        {/* Load Solution Button */}
-        <button
-          onClick={handleLoadClick}
-          disabled={loading}
-          style={{
-            padding: '8px 12px',
-            backgroundColor: loading ? '#6c757d' : '#007bff',
-            color: 'white',
-            border: 'none',
-            borderRadius: '6px',
-            fontSize: '14px',
-            fontWeight: '500',
-            cursor: loading ? 'not-allowed' : 'pointer',
-            minWidth: '100px',
+        <div style={{ display: 'flex', gap: '6px', flexWrap: 'wrap' }}>
+          <button
+            onClick={handleLoadClick}
+            disabled={loading}
+            style={{
+              padding: '6px 12px',
+              backgroundColor: '#17a2b8',
+              color: 'white',
+              border: 'none',
+              borderRadius: '4px',
+              fontSize: '12px',
+              fontWeight: '500',
+              cursor: loading ? 'not-allowed' : 'pointer',
+              opacity: loading ? 0.6 : 1
+            }}
+          >
+            {loading ? 'Loading...' : 'Load Solution'}
+          </button>
+          
+          <button
+            onClick={onSettings}
+            disabled={loading}
+            style={{
+              padding: '8px 12px',
+              backgroundColor: '#6c757d',
+              color: 'white',
+              border: 'none',
+              borderRadius: '4px',
+              fontSize: '14px',
+              cursor: loading ? 'not-allowed' : 'pointer',
+              opacity: loading ? 0.6 : 1,
+              display: 'flex',
+              alignItems: 'center',
+              justifyContent: 'center'
+            }}
+            title="Settings"
+          >
+            ⚙️
+          </button>
+        </div>
+
+        {solutionName && (
+          <div style={{
             display: 'flex',
             alignItems: 'center',
-            justifyContent: 'center',
-            gap: '6px'
-          }}
-        >
-          {loading ? (
-            <>
-              <div style={{
-                width: '12px',
-                height: '12px',
-                border: '2px solid white',
-                borderTop: '2px solid transparent',
-                borderRadius: '50%',
-                animation: 'spin 1s linear infinite'
-              }} />
-              Loading...
-            </>
-          ) : (
-            <>📁 Load Solution</>
-          )}
-        </button>
-        
-        {/* Settings Button */}
-        <button
-          onClick={onSettings}
-          disabled={!hasSolution || loading}
-          style={{
-            padding: '8px 12px',
-            backgroundColor: (!hasSolution || loading) ? '#e9ecef' : '#28a745',
-            color: (!hasSolution || loading) ? '#6c757d' : 'white',
-            border: 'none',
-            borderRadius: '6px',
-            fontSize: '14px',
-            fontWeight: '500',
-            cursor: (!hasSolution || loading) ? 'not-allowed' : 'pointer',
-            minWidth: '80px'
-          }}
-        >
-          ⚙️ Settings
-        </button>
+            fontSize: '12px',
+            fontWeight: '600',
+            color: '#495057',
+            backgroundColor: '#f8f9fa',
+            padding: '4px 8px',
+            borderRadius: '4px'
+          }}>
+            Solution: {solutionName}
+          </div>
+        )}
       </div>
+      
+      {/* Piece Visibility Slider */}
+      {hasSolution && totalPieces > 0 && (
+        <div style={{
+          display: 'flex',
+          alignItems: 'center',
+          gap: '8px',
+          padding: '4px 0',
+          fontSize: '12px',
+          maxWidth: '300px'
+        }}>
+          <span style={{ 
+            fontSize: '12px', 
+            fontWeight: '600', 
+            color: '#495057',
+            minWidth: '80px'
+          }}>
+            👁️ Visible: {visiblePieceCount}/{totalPieces}
+          </span>
+          <input
+            type="range"
+            min="0"
+            max={totalPieces}
+            step="1"
+            value={visiblePieceCount}
+            onChange={(e) => onVisibilityChange(parseInt(e.target.value))}
+            style={{
+              width: '150px',
+              height: '4px',
+              background: '#e9ecef',
+              borderRadius: '2px',
+              outline: 'none',
+              cursor: 'pointer'
+            }}
+          />
+        </div>
+      )}
       
       {/* File Selection Dropdown */}
       {showFileList && (
         <div style={{
+          position: 'absolute',
+          top: '100%',
+          left: '0',
+          right: '0',
           backgroundColor: 'white',
-          borderRadius: '8px',
+          borderRadius: '4px',
           boxShadow: '0 4px 12px rgba(0,0,0,0.15)',
           border: '1px solid #e9ecef',
           maxHeight: '300px',
           overflowY: 'auto',
-          minWidth: '300px'
+          zIndex: 1001
         }}>
           {/* Header */}
           <div style={{
-            padding: '12px 16px',
+            padding: '8px 12px',
             borderBottom: '1px solid #e9ecef',
             fontWeight: '600',
-            fontSize: '14px',
+            fontSize: '12px',
             color: '#333'
           }}>
             Select Solution File
@@ -162,13 +210,13 @@ export default function SolutionToolbar({
           <div
             onClick={handleFileSelect}
             style={{
-              padding: '12px 16px',
+              padding: '8px 12px',
               cursor: 'pointer',
               borderBottom: '1px solid #f8f9fa',
               display: 'flex',
               alignItems: 'center',
-              gap: '8px',
-              fontSize: '14px',
+              gap: '6px',
+              fontSize: '12px',
               color: '#007bff'
             }}
             onMouseEnter={(e) => e.currentTarget.style.backgroundColor = '#f8f9fa'}
@@ -179,11 +227,11 @@ export default function SolutionToolbar({
           
           {/* Available Solutions */}
           <div style={{
-            padding: '8px 0'
+            padding: '4px 0'
           }}>
             <div style={{
-              padding: '8px 16px',
-              fontSize: '12px',
+              padding: '4px 12px',
+              fontSize: '10px',
               fontWeight: '600',
               color: '#666',
               textTransform: 'uppercase'
@@ -195,9 +243,9 @@ export default function SolutionToolbar({
                 key={filename}
                 onClick={() => handleUrlSelect(filename)}
                 style={{
-                  padding: '8px 16px',
+                  padding: '6px 12px',
                   cursor: 'pointer',
-                  fontSize: '13px',
+                  fontSize: '11px',
                   color: '#333',
                   fontFamily: 'monospace'
                 }}
@@ -211,19 +259,19 @@ export default function SolutionToolbar({
           
           {/* Close Button */}
           <div style={{
-            padding: '8px 16px',
+            padding: '6px 12px',
             borderTop: '1px solid #e9ecef',
             textAlign: 'center'
           }}>
             <button
               onClick={() => setShowFileList(false)}
               style={{
-                padding: '6px 12px',
+                padding: '4px 8px',
                 backgroundColor: '#6c757d',
                 color: 'white',
                 border: 'none',
                 borderRadius: '4px',
-                fontSize: '12px',
+                fontSize: '10px',
                 cursor: 'pointer'
               }}
             >
@@ -241,14 +289,6 @@ export default function SolutionToolbar({
         onChange={handleFileChange}
         style={{ display: 'none' }}
       />
-      
-      {/* CSS Animation */}
-      <style>{`
-        @keyframes spin {
-          0% { transform: rotate(0deg); }
-          100% { transform: rotate(360deg); }
-        }
-      `}</style>
     </div>
   );
 }
