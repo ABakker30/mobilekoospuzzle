@@ -1,7 +1,7 @@
 // Placeholder notice removed—page now functional.
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import { Link } from 'react-router-dom';
-import ShapeEditor3D from '../components/shape/ShapeEditor3D';
+import ShapeEditor3D, { ShapeEditor3DRef } from '../components/shape/ShapeEditor3D';
 import ShapeToolbar from '../components/shape/ShapeToolbar';
 import LibraryBrowser from '../components/shape/LibraryBrowser';
 import SettingsModal, { AppSettings } from '../components/shape/SettingsModal';
@@ -9,6 +9,7 @@ import { FCCCoord } from '../lib/coords/fcc';
 import { computeShortCID } from '../lib/cid';
 import { saveJSONFile } from '../services/files';
 import { validateContainerV1, containerToV1Format } from '../lib/guards/containerV1';
+import { analyzeConvexHull, calculateOptimalCameraPosition } from '../lib/geometry/hull';
 
 export default function PuzzleShapePage() {
   // Removed excessive logging to prevent console spam
@@ -24,6 +25,9 @@ export default function PuzzleShapePage() {
   const [error, setError] = useState<string>('');
   const [showLibraryBrowser, setShowLibraryBrowser] = useState(false);
   const [showSettings, setShowSettings] = useState(false);
+  
+  // Ref to access ShapeEditor3D for center & orient functionality
+  const shapeEditorRef = useRef<ShapeEditor3DRef>(null);
   // Load settings from localStorage or use defaults
   const loadSettings = (): AppSettings => {
     try {
@@ -243,6 +247,53 @@ export default function PuzzleShapePage() {
     setShowLibraryBrowser(false);
   };
 
+  const handleCenterOrient = async () => {
+    if (coordinates.length < 4) {
+      setError('Need at least 4 cells for hull analysis');
+      return;
+    }
+
+    try {
+      setLoading(true);
+      console.log('🎯 Center & Orient: Starting hull analysis...');
+      
+      // Get current world coordinates from ShapeEditor3D
+      if (!shapeEditorRef.current || !shapeEditorRef.current.getCellRecords) {
+        setError('ShapeEditor3D not ready for orientation');
+        return;
+      }
+
+      const cellRecords = shapeEditorRef.current.getCellRecords();
+      if (!cellRecords || cellRecords.length === 0) {
+        setError('No cell records available for orientation');
+        return;
+      }
+
+      // Extract world coordinates for hull analysis
+      const worldPoints = cellRecords.map((record: any) => record.worldCoord);
+      
+      // Perform convex hull analysis
+      const hullAnalysis = analyzeConvexHull(worldPoints);
+      
+      console.log(`🎯 Center & Orient: Hull analysis complete`);
+      console.log(`🎯 Largest face area: ${hullAnalysis.largestFace.area.toFixed(3)}`);
+      
+      // Apply orientation transformation to all cell records
+      if (shapeEditorRef.current.applyCenterOrientTransform) {
+        await shapeEditorRef.current.applyCenterOrientTransform(hullAnalysis.orientationMatrix);
+        console.log('🎯 Center & Orient: Transformation applied successfully');
+      } else {
+        setError('ShapeEditor3D does not support center & orient transformation');
+      }
+      
+    } catch (err) {
+      console.error('🎯 Center & Orient Error:', err);
+      setError(`Center & Orient failed: ${(err as Error).message}`);
+    } finally {
+      setLoading(false);
+    }
+  };
+
   const handleSettings = () => {
     setShowSettings(true);
   };
@@ -291,6 +342,7 @@ export default function PuzzleShapePage() {
           onEditModeChange={setEditMode}
           onEditingEnabledChange={setEditingEnabled}
           onUndo={handleUndo}
+          onCenterOrient={handleCenterOrient}
           loading={loading}
         />
       </div>
@@ -301,11 +353,12 @@ export default function PuzzleShapePage() {
         backgroundColor: '#f0f0f0' // Container background (not 3D scene)
       }}>
         <ShapeEditor3D
+          ref={shapeEditorRef}
           coordinates={coordinates}
-          settings={settings}
+          onCoordinatesChange={setCoordinates}
           editMode={editMode}
           editingEnabled={editingEnabled}
-          onCoordinatesChange={handleCoordinatesChange}
+          settings={settings}
         />
       </div>
       

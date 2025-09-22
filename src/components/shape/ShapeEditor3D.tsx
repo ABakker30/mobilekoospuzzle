@@ -1,9 +1,10 @@
 // UI-only port; engines remain upstream.
-import React, { useEffect, useRef, useState } from 'react';
+import React, { useEffect, useRef, useState, forwardRef, useImperativeHandle } from 'react';
 import * as THREE from 'three';
-import { OrbitControls } from 'three/examples/jsm/controls/OrbitControls.js';
+import { OrbitControls } from 'three/addons/controls/OrbitControls.js';
 import { FCCCoord, fccToWorld, getFCCNeighbors, centerFCCCoords } from '../../lib/coords/fcc';
 import { AppSettings } from './SettingsModal';
+import { calculateOptimalCameraPosition } from '../../lib/geometry/hull';
 
 // New CellRecord structure - single source of truth
 interface CellRecord {
@@ -20,13 +21,18 @@ interface ShapeEditor3DProps {
   settings: AppSettings;
 }
 
-export default function ShapeEditor3D({
+export interface ShapeEditor3DRef {
+  getCellRecords: () => CellRecord[];
+  applyCenterOrientTransform: (transformMatrix: THREE.Matrix4) => Promise<void>;
+}
+
+const ShapeEditor3D = forwardRef<ShapeEditor3DRef, ShapeEditor3DProps>(({
   coordinates,
   settings,
   editMode,
   editingEnabled,
   onCoordinatesChange
-}: ShapeEditor3DProps) {
+}, ref) => {
   const instanceId = useRef(Math.random().toString(36).substr(2, 9));
   console.log(`ShapeEditor3D [${instanceId.current}]: Component render/re-render`, {
     coordinatesLength: coordinates.length,
@@ -971,6 +977,45 @@ export default function ShapeEditor3D({
     setMouseMoved(false);
   };
 
+  // Expose methods for hull-based center & orient functionality
+  useImperativeHandle(ref, () => ({
+    getCellRecords: () => {
+      return cellRecords;
+    },
+    
+    applyCenterOrientTransform: async (transformMatrix: THREE.Matrix4) => {
+      console.log('🎯 Applying center & orient transformation to cell records...');
+      
+      // Apply transformation to all cell records' world coordinates
+      const transformedRecords = cellRecords.map(record => ({
+        ...record,
+        worldCoord: record.worldCoord.clone().applyMatrix4(transformMatrix)
+      }));
+      
+      // Update cell records state
+      setCellRecords(transformedRecords);
+      
+      // Recalculate neighbors with new positions
+      const newNeighborRecords = calculateNeighborRecords(transformedRecords);
+      setNeighborRecords(newNeighborRecords);
+      
+      // Calculate optimal camera position for the transformed shape
+      if (cameraRef.current && controlsRef.current) {
+        const worldPoints = transformedRecords.map(record => record.worldCoord);
+        const { position, target } = calculateOptimalCameraPosition(worldPoints, cameraRef.current);
+        
+        // Smoothly animate camera to new position
+        cameraRef.current.position.copy(position);
+        controlsRef.current.target.copy(target);
+        controlsRef.current.update();
+        
+        console.log('🎯 Camera positioned for optimal viewing');
+      }
+      
+      console.log('🎯 Center & orient transformation complete');
+    }
+  }), [cellRecords, calculateNeighborRecords]);
+
   return (
     <div 
       ref={containerRef}
@@ -989,4 +1034,8 @@ export default function ShapeEditor3D({
       }}
     />
   );
-}
+});
+
+ShapeEditor3D.displayName = 'ShapeEditor3D';
+
+export default ShapeEditor3D;

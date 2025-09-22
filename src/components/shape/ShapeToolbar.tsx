@@ -14,6 +14,7 @@ interface ShapeToolbarProps {
   onEditModeChange: (mode: 'add' | 'delete') => void;
   onEditingEnabledChange: (enabled: boolean) => void;
   onUndo: () => void;
+  onCenterOrient: () => void;
   loading?: boolean;
 }
 
@@ -30,6 +31,7 @@ export default function ShapeToolbar({
   onEditModeChange,
   onEditingEnabledChange,
   onUndo,
+  onCenterOrient,
   loading = false
 }: ShapeToolbarProps) {
   const hasChanges = originalCID && currentCID !== originalCID;
@@ -93,7 +95,7 @@ export default function ShapeToolbar({
             onClick={onSettings}
             disabled={loading}
             style={{
-              padding: '6px 8px',
+              padding: '8px 12px',
               backgroundColor: '#6c757d',
               color: 'white',
               border: 'none',
@@ -108,6 +110,27 @@ export default function ShapeToolbar({
             title="Settings"
           >
             ⚙️
+          </button>
+
+          <button
+            onClick={onCenterOrient}
+            disabled={loading || cellCount === 0}
+            style={{
+              padding: '8px 12px',
+              backgroundColor: cellCount > 0 ? '#17a2b8' : '#6c757d',
+              color: 'white',
+              border: 'none',
+              borderRadius: '4px',
+              fontSize: '14px',
+              cursor: (loading || cellCount === 0) ? 'not-allowed' : 'pointer',
+              opacity: (loading || cellCount === 0) ? 0.6 : 1,
+              display: 'flex',
+              alignItems: 'center',
+              justifyContent: 'center'
+            }}
+            title="Center & Orient Shape"
+          >
+            🎯
           </button>
         </div>
 
