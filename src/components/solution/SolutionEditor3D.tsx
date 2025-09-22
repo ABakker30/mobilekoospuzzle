@@ -51,7 +51,8 @@ const SolutionEditor3D = forwardRef<SolutionEditor3DRef, SolutionEditor3DProps>(
       ? new THREE.OrthographicCamera(-10 * aspect, 10 * aspect, 10, -10, 0.1, 1000)
       : new THREE.PerspectiveCamera(settings.camera.focalLength, aspect, 0.1, 1000);
     
-    camera.position.set(10, 10, 10);
+    camera.position.set(15, 15, 15); // Move camera further back
+    camera.lookAt(0, 0, 0);
     cameraRef.current = camera;
     
     // Renderer setup
@@ -143,6 +144,42 @@ const SolutionEditor3D = forwardRef<SolutionEditor3DRef, SolutionEditor3DProps>(
     }
   }, [settings.brightness]);
   
+  // Calculate optimal sphere radius based on shortest distance between spheres in world coordinates
+  const calculateOptimalSphereRadius = (): number => {
+    let minDistance = Infinity;
+    
+    // Check distances within each piece (4 spheres per piece)
+    solution.placements.forEach((placement) => {
+      const worldPositions = placement.cells_ijk.map(cell => {
+        const fccCoord = { x: cell[0], y: cell[1], z: cell[2] };
+        return fccToWorld(fccCoord);
+      });
+      
+      // Calculate all pairwise distances within this piece
+      for (let i = 0; i < worldPositions.length; i++) {
+        for (let j = i + 1; j < worldPositions.length; j++) {
+          const pos1 = worldPositions[i];
+          const pos2 = worldPositions[j];
+          const distance = Math.sqrt(
+            Math.pow(pos1.x - pos2.x, 2) +
+            Math.pow(pos1.y - pos2.y, 2) +
+            Math.pow(pos1.z - pos2.z, 2)
+          );
+          minDistance = Math.min(minDistance, distance);
+        }
+      }
+    });
+    
+    // Return 0.5x the shortest distance, with fallback
+    const radius = minDistance === Infinity ? 0.4 : minDistance * 0.5;
+    console.log('📏 Calculated sphere radius:', {
+      minWorldDistance: minDistance,
+      sphereRadius: radius
+    });
+    
+    return radius;
+  };
+
   // Create piece render data
   const createPieceRenderData = (): PieceRenderData[] => {
     const pieceOrder = Object.keys(solution.piecesUsed).sort();
@@ -180,6 +217,9 @@ const SolutionEditor3D = forwardRef<SolutionEditor3DRef, SolutionEditor3DProps>(
     // Create piece render data
     const pieceData = createPieceRenderData();
     
+    // Calculate optimal sphere radius based on world coordinates
+    const sphereRadius = calculateOptimalSphereRadius();
+    
     // Render each piece
     pieceData.forEach((piece) => {
       const pieceGroup = new THREE.Group();
@@ -193,12 +233,16 @@ const SolutionEditor3D = forwardRef<SolutionEditor3DRef, SolutionEditor3DProps>(
         opacity: 0.9
       });
       
-      // Create spheres for each cell in the piece
-      const sphereGeometry = new THREE.SphereGeometry(0.4, 16, 12);
+      // Create high-quality spheres for each cell in the piece
+      const sphereGeometry = new THREE.SphereGeometry(sphereRadius, 32, 24); // High quality mesh
       
-      piece.cells.forEach((cell) => {
+      piece.cells.forEach((cell, cellIndex) => {
         const sphere = new THREE.Mesh(sphereGeometry, material.clone());
-        const worldPos = fccToWorld(cell);
+        
+        // Convert array [i,j,k] to FCCCoord object {x,y,z}
+        const fccCoord = { x: cell[0], y: cell[1], z: cell[2] };
+        const worldPos = fccToWorld(fccCoord);
+        
         sphere.position.set(worldPos.x, worldPos.y, worldPos.z);
         sphere.castShadow = true;
         sphere.receiveShadow = true;
@@ -227,8 +271,9 @@ const SolutionEditor3D = forwardRef<SolutionEditor3DRef, SolutionEditor3DProps>(
     
     if (allCells.length === 0) return;
     
-    // Center the coordinates
-    const centeredCells = centerFCCCoords(allCells);
+    // Convert arrays to FCCCoord objects and center
+    const fccCoords = allCells.map(cell => ({ x: cell[0], y: cell[1], z: cell[2] }));
+    const centeredCells = centerFCCCoords(fccCoords);
     const worldPoints = centeredCells.map(cell => fccToWorld(cell));
     
     // Update piece positions with centered coordinates
