@@ -62,13 +62,15 @@ export class PBRAssetManager {
     this.listeners.forEach(callback => callback(this.loadingState));
   }
   
-  // HDR Environment Loading with Progressive Enhancement
+  // HDR Environment Loading with Mobile Optimization
   async loadHDREnvironment(
     lowResPath: string, 
     highResPath: string, 
     intensity: number = 1.0
   ): Promise<{ lowRes: THREE.Texture; highRes?: THREE.Texture }> {
     console.log('🌟 PBR: Starting HDR environment loading...');
+    console.log('🌟 PBR: User Agent:', navigator.userAgent);
+    console.log('🌟 PBR: Is Mobile:', this.isMobileDevice());
     
     if (!this.pmremGenerator) {
       throw new Error('PBR Asset Manager not initialized');
@@ -77,26 +79,14 @@ export class PBRAssetManager {
     this.updateLoadingState({ isLoading: true, progress: 0, error: undefined });
     
     try {
-      // Step 1: Load low-res version first (fast startup)
-      console.log('🌟 PBR: Loading low-res HDR for fast startup...');
-      const lowRes = await this.loadSingleHDR(lowResPath, intensity);
-      this.updateLoadingState({ progress: 50 });
-      
-      // Step 2: Load high-res version in background
-      console.log('🌟 PBR: Loading high-res HDR for quality...');
-      let highRes: THREE.Texture | undefined;
-      
-      try {
-        highRes = await this.loadSingleHDR(highResPath, intensity);
-        this.updateLoadingState({ progress: 100 });
-        console.log('🌟 PBR: Both HDR versions loaded successfully');
-      } catch (err) {
-        console.warn('🌟 PBR: High-res HDR failed, using low-res only:', err);
-        this.updateLoadingState({ progress: 100 });
+      // Mobile-specific loading strategy
+      if (this.isMobileDevice()) {
+        console.log('🌟 PBR: Mobile device detected - using optimized loading');
+        return await this.loadHDRForMobile(lowResPath, intensity);
+      } else {
+        console.log('🌟 PBR: Desktop device - using progressive loading');
+        return await this.loadHDRForDesktop(lowResPath, highResPath, intensity);
       }
-      
-      this.updateLoadingState({ isLoading: false });
-      return { lowRes, highRes };
       
     } catch (error) {
       console.error('🌟 PBR: HDR loading failed:', error);
@@ -106,6 +96,119 @@ export class PBRAssetManager {
       });
       throw error;
     }
+  }
+  
+  // Mobile device detection
+  private isMobileDevice(): boolean {
+    return /Android|webOS|iPhone|iPad|iPod|BlackBerry|IEMobile|Opera Mini/i.test(navigator.userAgent) ||
+           (window.innerWidth <= 768);
+  }
+  
+  // Mobile-optimized HDR loading
+  private async loadHDRForMobile(path: string, intensity: number): Promise<{ lowRes: THREE.Texture; highRes?: THREE.Texture }> {
+    console.log('🌟 PBR: Loading HDR for mobile with extra timeout and error handling...');
+    
+    try {
+      // Try to load the HDR file with mobile-specific settings
+      const lowRes = await this.loadSingleHDRWithTimeout(path, intensity, 10000); // 10 second timeout
+      this.updateLoadingState({ progress: 100, isLoading: false });
+      console.log('🌟 PBR: Mobile HDR loaded successfully');
+      return { lowRes };
+      
+    } catch (error) {
+      console.warn('🌟 PBR: Mobile HDR loading failed, creating fallback:', error);
+      
+      // Create a mobile-optimized procedural environment
+      const fallbackTexture = this.createMobileFallbackHDR();
+      this.updateLoadingState({ progress: 100, isLoading: false });
+      return { lowRes: fallbackTexture };
+    }
+  }
+  
+  // Desktop HDR loading (original logic)
+  private async loadHDRForDesktop(lowResPath: string, highResPath: string, intensity: number): Promise<{ lowRes: THREE.Texture; highRes?: THREE.Texture }> {
+    // Step 1: Load low-res version first (fast startup)
+    console.log('🌟 PBR: Loading low-res HDR for fast startup...');
+    const lowRes = await this.loadSingleHDR(lowResPath, intensity);
+    this.updateLoadingState({ progress: 50 });
+    
+    // Step 2: Load high-res version in background
+    console.log('🌟 PBR: Loading high-res HDR for quality...');
+    let highRes: THREE.Texture | undefined;
+    
+    try {
+      highRes = await this.loadSingleHDR(highResPath, intensity);
+      this.updateLoadingState({ progress: 100 });
+      console.log('🌟 PBR: Both HDR versions loaded successfully');
+    } catch (err) {
+      console.warn('🌟 PBR: High-res HDR failed, using low-res only:', err);
+      this.updateLoadingState({ progress: 100 });
+    }
+    
+    this.updateLoadingState({ isLoading: false });
+    return { lowRes, highRes };
+  }
+  
+  // HDR loading with timeout for mobile
+  private async loadSingleHDRWithTimeout(path: string, intensity: number, timeoutMs: number = 10000): Promise<THREE.Texture> {
+    console.log(`🌟 PBR: Loading HDR with ${timeoutMs}ms timeout: ${path}`);
+    
+    return new Promise((resolve, reject) => {
+      const timeout = setTimeout(() => {
+        reject(new Error(`HDR loading timeout after ${timeoutMs}ms`));
+      }, timeoutMs);
+      
+      this.loadSingleHDR(path, intensity)
+        .then((texture) => {
+          clearTimeout(timeout);
+          resolve(texture);
+        })
+        .catch((error) => {
+          clearTimeout(timeout);
+          reject(error);
+        });
+    });
+  }
+  
+  // Create mobile-optimized fallback HDR
+  private createMobileFallbackHDR(): THREE.Texture {
+    console.log('🌟 PBR: Creating mobile-optimized fallback HDR...');
+    
+    // Create smaller texture for mobile
+    const size = 256; // Smaller than desktop version
+    const canvas = document.createElement('canvas');
+    canvas.width = size;
+    canvas.height = size;
+    const ctx = canvas.getContext('2d')!;
+    
+    // Create a simple but effective gradient
+    const gradient = ctx.createRadialGradient(size/2, size/2, 0, size/2, size/2, size/2);
+    gradient.addColorStop(0, '#ffffff');
+    gradient.addColorStop(0.7, '#e0e0e0');
+    gradient.addColorStop(1, '#a0a0a0');
+    
+    ctx.fillStyle = gradient;
+    ctx.fillRect(0, 0, size, size);
+    
+    // Create texture
+    const texture = new THREE.CanvasTexture(canvas);
+    texture.mapping = THREE.EquirectangularReflectionMapping;
+    texture.colorSpace = THREE.SRGBColorSpace;
+    
+    // Process with PMREM generator if available
+    if (this.pmremGenerator) {
+      try {
+        const envMap = this.pmremGenerator.fromEquirectangular(texture).texture;
+        texture.dispose();
+        console.log('🌟 PBR: Mobile fallback HDR created and processed');
+        return envMap;
+      } catch (err) {
+        console.warn('🌟 PBR: PMREM processing failed for mobile fallback:', err);
+      }
+    }
+    
+    console.log('🌟 PBR: Mobile fallback HDR created (basic)');
+    return texture;
   }
   
   private async loadSingleHDR(path: string, intensity: number): Promise<THREE.Texture> {

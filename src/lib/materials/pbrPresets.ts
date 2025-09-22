@@ -47,14 +47,14 @@ export const HDR_ENVIRONMENTS: Record<string, HDREnvironment> = {
   },
   outdoor: {
     name: 'Outdoor Natural',
-    lowResPath: '/assets/hdri/studio_small_09_1k.hdr', // Fallback to studio for now
-    highResPath: '/assets/hdri/studio_small_09_1k.hdr',
+    lowResPath: '/assets/hdri/Outdoor.hdr',
+    highResPath: '/assets/hdri/Outdoor.hdr', // Use your outdoor HDR file
     intensity: 0.8
   },
   sunset: {
     name: 'Golden Hour',
-    lowResPath: '/assets/hdri/studio_small_09_1k.hdr', // Fallback to studio for now
-    highResPath: '/assets/hdri/studio_small_09_1k.hdr',
+    lowResPath: '/assets/hdri/Outdoor.hdr', // Use outdoor as fallback for sunset
+    highResPath: '/assets/hdri/Outdoor.hdr',
     intensity: 1.2
   }
 };

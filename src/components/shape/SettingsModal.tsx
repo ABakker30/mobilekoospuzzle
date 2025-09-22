@@ -482,6 +482,23 @@ export default function SettingsModal({ settings, onSettingsChange, onClose }: S
               </div>
             )}
 
+            {/* Mobile Debug Info */}
+            {settings.material.type?.startsWith('pbr_') && (
+              <div style={{
+                marginBottom: '16px',
+                padding: '8px',
+                backgroundColor: '#f5f5f5',
+                borderRadius: '4px',
+                fontSize: '11px',
+                color: '#666'
+              }}>
+                <div>📱 Device: {/Android|webOS|iPhone|iPad|iPod|BlackBerry|IEMobile|Opera Mini/i.test(navigator.userAgent) ? 'Mobile' : 'Desktop'}</div>
+                <div>🖥️ Screen: {window.innerWidth}×{window.innerHeight}</div>
+                <div>🌐 Browser: {navigator.userAgent.split(' ').pop()}</div>
+                <div>💾 Memory: {(navigator as any).deviceMemory ? `${(navigator as any).deviceMemory}GB` : 'Unknown'}</div>
+              </div>
+            )}
+
             {/* Advanced PBR Controls */}
             {(settings.material.type?.startsWith('pbr_') || showAdvanced) && (
               <div style={{
