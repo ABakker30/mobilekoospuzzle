@@ -69,7 +69,7 @@ export class PBRIntegrationService {
       if (settings.type?.startsWith('pbr_') && settings.preset) {
         return await this.createPBRMaterial(settings);
       } else {
-        return this.createLegacyMaterial(settings);
+        return await this.createLegacyMaterial(settings);
       }
     } catch (error) {
       const errorMessage = error instanceof Error ? error.message : 'Material creation failed';
@@ -182,7 +182,7 @@ export class PBRIntegrationService {
   }
   
   // Create legacy material (backward compatibility)
-  private createLegacyMaterial(settings: MaterialSettings): THREE.Material {
+  private async createLegacyMaterial(settings: MaterialSettings): Promise<THREE.Material> {
     console.log('🎨 Creating legacy material:', settings.type);
     
     const material = new THREE.MeshStandardMaterial({
@@ -193,9 +193,27 @@ export class PBRIntegrationService {
       opacity: settings.transparency > 0 ? 1 - settings.transparency : 1
     });
     
+    // Add basic environment mapping even for legacy materials if HDR is enabled
+    let hdrEnvironment: THREE.Texture | null = null;
+    if (settings.useHDR) {
+      try {
+        hdrEnvironment = await this.loadHDREnvironment(settings.hdrEnvironment || 'studio');
+        material.envMap = hdrEnvironment;
+        material.envMapIntensity = settings.hdrIntensity || 1.0;
+        
+        // Update scene environment
+        if (this.scene) {
+          this.scene.environment = hdrEnvironment;
+          console.log('🌟 Scene environment updated for legacy material');
+        }
+      } catch (error) {
+        console.warn('🎨 Failed to load HDR for legacy material:', error);
+      }
+    }
+    
     this.updateState({ 
       currentMaterial: material,
-      currentEnvironment: null,
+      currentEnvironment: hdrEnvironment,
       isLoading: false 
     });
     
@@ -221,7 +239,7 @@ export class PBRIntegrationService {
     return material;
   }
   
-  // Load HDR environment
+  // Load HDR environment with fallback
   private async loadHDREnvironment(environmentKey: string): Promise<THREE.Texture> {
     const envConfig = HDR_ENVIRONMENTS[environmentKey];
     if (!envConfig) {
@@ -230,15 +248,94 @@ export class PBRIntegrationService {
     
     console.log('🌟 Loading HDR environment:', envConfig.name);
     
-    // Use progressive loading strategy
-    const { lowRes, highRes } = await this.assetManager.loadHDREnvironment(
-      envConfig.lowResPath,
-      envConfig.highResPath,
-      envConfig.intensity
-    );
+    try {
+      // Try to load real HDR files
+      const { lowRes, highRes } = await this.assetManager.loadHDREnvironment(
+        envConfig.lowResPath,
+        envConfig.highResPath,
+        envConfig.intensity
+      );
+      
+      // Return high-res if available, otherwise low-res
+      return highRes || lowRes;
+    } catch (error) {
+      console.warn('🌟 HDR files not found, creating procedural environment:', error);
+      
+      // Create procedural HDR environment as fallback
+      return this.createProceduralHDREnvironment(environmentKey);
+    }
+  }
+  
+  // Create procedural HDR environment when real files aren't available
+  private createProceduralHDREnvironment(environmentKey: string): THREE.Texture {
+    console.log('🌟 Creating procedural HDR environment for:', environmentKey);
     
-    // Return high-res if available, otherwise low-res
-    return highRes || lowRes;
+    if (!this.renderer) {
+      throw new Error('Renderer not available for procedural HDR creation');
+    }
+    
+    // Create a simple gradient environment map
+    const size = 512;
+    const canvas = document.createElement('canvas');
+    canvas.width = size;
+    canvas.height = size;
+    const ctx = canvas.getContext('2d')!;
+    
+    // Create gradient based on environment type
+    let gradient: CanvasGradient;
+    
+    switch (environmentKey) {
+      case 'studio':
+        // Neutral studio lighting - gray to white gradient
+        gradient = ctx.createRadialGradient(size/2, size/2, 0, size/2, size/2, size/2);
+        gradient.addColorStop(0, '#ffffff');
+        gradient.addColorStop(0.7, '#cccccc');
+        gradient.addColorStop(1, '#888888');
+        break;
+        
+      case 'outdoor':
+        // Sky blue gradient
+        gradient = ctx.createLinearGradient(0, 0, 0, size);
+        gradient.addColorStop(0, '#87CEEB');
+        gradient.addColorStop(0.5, '#98D8E8');
+        gradient.addColorStop(1, '#B0E0E6');
+        break;
+        
+      case 'sunset':
+        // Warm sunset gradient
+        gradient = ctx.createLinearGradient(0, 0, 0, size);
+        gradient.addColorStop(0, '#FFD700');
+        gradient.addColorStop(0.5, '#FF8C00');
+        gradient.addColorStop(1, '#FF6347');
+        break;
+        
+      default:
+        // Default neutral gradient
+        gradient = ctx.createRadialGradient(size/2, size/2, 0, size/2, size/2, size/2);
+        gradient.addColorStop(0, '#ffffff');
+        gradient.addColorStop(1, '#cccccc');
+    }
+    
+    ctx.fillStyle = gradient;
+    ctx.fillRect(0, 0, size, size);
+    
+    // Create texture from canvas
+    const texture = new THREE.CanvasTexture(canvas);
+    texture.mapping = THREE.EquirectangularReflectionMapping;
+    texture.colorSpace = THREE.SRGBColorSpace;
+    
+    // Process with PMREM generator for proper PBR
+    const pmremGenerator = this.assetManager.getPMREMGenerator();
+    if (pmremGenerator) {
+      const envMap = pmremGenerator.fromEquirectangular(texture).texture;
+      texture.dispose(); // Clean up original
+      
+      console.log('🌟 Procedural HDR environment created and processed');
+      return envMap;
+    }
+    
+    console.log('🌟 Procedural HDR environment created (basic)');
+    return texture;
   }
   
   // Update existing material with new settings

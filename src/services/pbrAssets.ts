@@ -46,6 +46,11 @@ export class PBRAssetManager {
     console.log('🎨 PBR Asset Manager initialized');
   }
   
+  // Get PMREM generator for external use
+  getPMREMGenerator(): THREE.PMREMGenerator | null {
+    return this.pmremGenerator;
+  }
+  
   // Event system for loading state updates
   onLoadingStateChange(callback: (state: AssetLoadingState) => void): () => void {
     this.listeners.add(callback);
@@ -123,6 +128,9 @@ export class PBRAssetManager {
           }
           
           try {
+            console.log(`🌟 PBR: HDR texture loaded successfully: ${path}`);
+            console.log(`🌟 PBR: HDR texture size: ${texture.image.width}x${texture.image.height}`);
+            
             // Process HDR for PBR
             const envMap = this.pmremGenerator.fromEquirectangular(texture).texture;
             envMap.userData = { path, intensity };
@@ -134,7 +142,7 @@ export class PBRAssetManager {
             // Clean up original texture
             texture.dispose();
             
-            console.log(`🌟 PBR: HDR processed and cached: ${path}`);
+            console.log(`🌟 PBR: HDR processed and cached successfully: ${path}`);
             resolve(envMap);
           } catch (err) {
             console.error(`🌟 PBR: HDR processing failed for ${path}:`, err);
@@ -145,11 +153,18 @@ export class PBRAssetManager {
           if (progress.total > 0) {
             const percent = (progress.loaded / progress.total) * 100;
             console.log(`🌟 PBR: HDR loading progress (${path}): ${percent.toFixed(1)}%`);
+          } else {
+            console.log(`🌟 PBR: HDR loading... ${progress.loaded} bytes loaded`);
           }
         },
         (error) => {
           console.error(`🌟 PBR: HDR loading failed for ${path}:`, error);
-          reject(error);
+          console.error(`🌟 PBR: Error details:`, {
+            type: error.type,
+            target: error.target,
+            message: error.message || 'Unknown error'
+          });
+          reject(new Error(`Failed to load HDR file: ${path}. ${error.message || 'File may not exist or be corrupted.'}`));
         }
       );
     });

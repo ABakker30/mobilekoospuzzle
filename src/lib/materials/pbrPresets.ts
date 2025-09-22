@@ -41,20 +41,20 @@ export interface HDREnvironment {
 export const HDR_ENVIRONMENTS: Record<string, HDREnvironment> = {
   studio: {
     name: 'Studio Lighting',
-    lowResPath: '/assets/hdri/studio_1k.hdr',
-    highResPath: '/assets/hdri/studio_4k.hdr',
+    lowResPath: '/assets/hdri/studio_small_09_1k.hdr',
+    highResPath: '/assets/hdri/studio_small_09_1k.hdr', // Use same file for both (1k is good quality)
     intensity: 1.0
   },
   outdoor: {
     name: 'Outdoor Natural',
-    lowResPath: '/assets/hdri/outdoor_1k.hdr',
-    highResPath: '/assets/hdri/outdoor_4k.hdr',
+    lowResPath: '/assets/hdri/studio_small_09_1k.hdr', // Fallback to studio for now
+    highResPath: '/assets/hdri/studio_small_09_1k.hdr',
     intensity: 0.8
   },
   sunset: {
     name: 'Golden Hour',
-    lowResPath: '/assets/hdri/sunset_1k.hdr',
-    highResPath: '/assets/hdri/sunset_4k.hdr',
+    lowResPath: '/assets/hdri/studio_small_09_1k.hdr', // Fallback to studio for now
+    highResPath: '/assets/hdri/studio_small_09_1k.hdr',
     intensity: 1.2
   }
 };
