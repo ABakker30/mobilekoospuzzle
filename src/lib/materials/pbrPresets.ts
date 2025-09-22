@@ -2,6 +2,7 @@
 // Professional physically-based rendering materials for mobile 3D editing
 
 import * as THREE from 'three';
+import { RGBELoader } from 'three/addons/loaders/RGBELoader.js';
 
 export interface PBRMaterialConfig {
   name: string;
@@ -36,13 +37,30 @@ export interface HDREnvironment {
   intensity: number;
 }
 
-// Studio HDR environment for realistic metal reflections
-export const STUDIO_HDR: HDREnvironment = {
-  name: 'Studio Lighting',
-  lowResPath: '/assets/hdri/studio_1k.hdr',
-  highResPath: '/assets/hdri/studio_4k.hdr',
-  intensity: 1.0
+// HDR Environment presets
+export const HDR_ENVIRONMENTS: Record<string, HDREnvironment> = {
+  studio: {
+    name: 'Studio Lighting',
+    lowResPath: '/assets/hdri/studio_1k.hdr',
+    highResPath: '/assets/hdri/studio_4k.hdr',
+    intensity: 1.0
+  },
+  outdoor: {
+    name: 'Outdoor Natural',
+    lowResPath: '/assets/hdri/outdoor_1k.hdr',
+    highResPath: '/assets/hdri/outdoor_4k.hdr',
+    intensity: 0.8
+  },
+  sunset: {
+    name: 'Golden Hour',
+    lowResPath: '/assets/hdri/sunset_1k.hdr',
+    highResPath: '/assets/hdri/sunset_4k.hdr',
+    intensity: 1.2
+  }
 };
+
+// Default HDR environment
+export const DEFAULT_HDR = HDR_ENVIRONMENTS.studio;
 
 // Professional PBR material presets
 export const PBR_PRESETS: Record<string, PBRMaterialConfig> = {

@@ -1,0 +1,15 @@
+# HDR Placeholder Files
+
+For development, you can download HDR environments from:
+- HDR Haven: https://hdrihaven.com/
+- Poly Haven: https://polyhaven.com/hdris
+
+Recommended HDR files:
+- studio_1k.hdr (low-res, ~500KB)
+- studio_4k.hdr (high-res, ~4MB)
+- outdoor_1k.hdr (low-res, ~500KB)  
+- outdoor_4k.hdr (high-res, ~4MB)
+- sunset_1k.hdr (low-res, ~500KB)
+- sunset_4k.hdr (high-res, ~4MB)
+
+The system will gracefully handle missing files and fall back to basic materials.

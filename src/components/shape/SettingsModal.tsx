@@ -1,5 +1,5 @@
 import React, { useState, useRef, useEffect } from 'react';
-import { PBR_PRESETS, ExtendedMaterialSettings, DEFAULT_PBR_SETTINGS } from '../../lib/materials/pbrPresets';
+import { PBR_PRESETS, ExtendedMaterialSettings, DEFAULT_PBR_SETTINGS, HDR_ENVIRONMENTS } from '../../lib/materials/pbrPresets';
 import { PBRAssetManager } from '../../services/pbrAssets';
 
 // Enhanced material settings with PBR support (extends legacy)
@@ -18,6 +18,7 @@ export interface MaterialSettings {
   anisotropy?: number;
   useHDR?: boolean;
   hdrIntensity?: number;
+  hdrEnvironment?: string; // Key from HDR_ENVIRONMENTS
   preset?: string; // Key from PBR_PRESETS
 }
 
@@ -68,6 +69,7 @@ const pbrMaterialPresets: Record<string, MaterialPreset> = {
     clearcoatRoughness: 0.18,
     useHDR: true,
     hdrIntensity: 1.0,
+    hdrEnvironment: 'studio',
     preset: 'gold'
   },
   pbr_steel: {
@@ -78,6 +80,7 @@ const pbrMaterialPresets: Record<string, MaterialPreset> = {
     roughness: 0.03,
     useHDR: true,
     hdrIntensity: 1.0,
+    hdrEnvironment: 'studio',
     preset: 'stainlessSteel'
   },
   pbr_brushed: {
@@ -89,6 +92,7 @@ const pbrMaterialPresets: Record<string, MaterialPreset> = {
     anisotropy: 0.9,
     useHDR: true,
     hdrIntensity: 1.0,
+    hdrEnvironment: 'outdoor',
     preset: 'brushedSteel'
   }
 };
@@ -565,6 +569,33 @@ export default function SettingsModal({ settings, onSettingsChange, onClose }: S
                       />
                       Use HDR Environment (Realistic Reflections)
                     </label>
+                  </div>
+                )}
+
+                {/* HDR Environment Selection */}
+                {settings.material.useHDR && (
+                  <div style={{ marginBottom: '12px' }}>
+                    <label style={{ display: 'block', marginBottom: '4px', fontSize: '12px' }}>
+                      HDR Environment
+                    </label>
+                    <select
+                      value={settings.material.hdrEnvironment || 'studio'}
+                      onChange={(e) => updateMaterial({ hdrEnvironment: e.target.value })}
+                      style={{
+                        width: '100%',
+                        padding: '6px 8px',
+                        border: '1px solid #ced4da',
+                        borderRadius: '4px',
+                        fontSize: '12px',
+                        backgroundColor: 'white'
+                      }}
+                    >
+                      {Object.entries(HDR_ENVIRONMENTS).map(([key, env]) => (
+                        <option key={key} value={key}>
+                          {env.name}
+                        </option>
+                      ))}
+                    </select>
                   </div>
                 )}
 

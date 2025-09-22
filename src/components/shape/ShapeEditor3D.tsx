@@ -3,8 +3,9 @@ import React, { useEffect, useRef, useState, forwardRef, useImperativeHandle } f
 import * as THREE from 'three';
 import { OrbitControls } from 'three/addons/controls/OrbitControls.js';
 import { FCCCoord, fccToWorld, getFCCNeighbors, centerFCCCoords } from '../../lib/coords/fcc';
-import { AppSettings } from './SettingsModal';
+import { AppSettings, MaterialSettings } from './SettingsModal';
 import { calculateOptimalCameraPosition } from '../../lib/geometry/hull';
+import { PBRIntegrationService } from '../../services/pbrIntegration';
 
 // New CellRecord structure - single source of truth
 interface CellRecord {
@@ -25,6 +26,7 @@ export interface ShapeEditor3DRef {
   getCellRecords: () => CellRecord[];
   applyCenterOrientTransform: (transformMatrix: THREE.Matrix4) => Promise<void>;
   resetToOriginalTransform: (engineCoords: FCCCoord[]) => CellRecord[];
+  updateMaterialSettings: (materialSettings: MaterialSettings) => Promise<void>;
 }
 
 const ShapeEditor3D = forwardRef<ShapeEditor3DRef, ShapeEditor3DProps>(({
@@ -1087,6 +1089,46 @@ const ShapeEditor3D = forwardRef<ShapeEditor3DRef, ShapeEditor3DProps>(({
       
       console.log('🎯 Reset-based center & orient transformation complete');
       console.log('🎯 Transformation matrix stored for consistent editing');
+    },
+    
+    updateMaterialSettings: async (materialSettings: MaterialSettings) => {
+      console.log('🎨 Updating material settings in ShapeEditor3D:', materialSettings);
+      
+      try {
+        // Initialize PBR service if not already done
+        const pbrService = PBRIntegrationService.getInstance();
+        if (sceneRef.current && rendererRef.current) {
+          pbrService.initialize(sceneRef.current, rendererRef.current);
+        }
+        
+        // Create new material from settings
+        const newMaterial = await pbrService.createMaterialFromSettings(materialSettings);
+        
+        // Update all sphere materials
+        spheresRef.current.forEach(sphere => {
+          if (sphere.material) {
+            sphere.material.dispose(); // Clean up old material
+          }
+          sphere.material = newMaterial.clone(); // Clone to avoid sharing
+        });
+        
+        // Update preview sphere materials if they exist
+        if (previewSphereRef.current) {
+          if (previewSphereRef.current.material) {
+            previewSphereRef.current.material.dispose();
+          }
+          const previewMaterial = newMaterial.clone();
+          if (previewMaterial.transparent !== undefined) {
+            previewMaterial.transparent = true;
+            previewMaterial.opacity = 0.7; // Preview transparency
+          }
+          previewSphereRef.current.material = previewMaterial;
+        }
+        
+        console.log('🎨 Material settings updated successfully');
+      } catch (error) {
+        console.error('🎨 Failed to update material settings:', error);
+      }
     }
   }), [cellRecords, calculateNeighborRecords, coordinates, currentTransformation, resetToOriginalTransform]);
 

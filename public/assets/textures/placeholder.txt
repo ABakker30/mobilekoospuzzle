@@ -1,0 +1,14 @@
+# Texture Placeholder Files
+
+For development, you can create or download normal maps:
+- micro_scratches_normal.jpg (subtle scratches for gold clearcoat)
+- steel_scratches_normal.jpg (fine scratches for stainless steel)
+- brushed_anisotropy.jpg (directional brushing pattern)
+
+Texture requirements:
+- Format: JPG or PNG
+- Resolution: 512x512 or 1024x1024
+- Tiling: Seamless repeating patterns
+- Normal maps: Standard RGB tangent space
+
+The system will gracefully handle missing textures and use base materials without surface detail.

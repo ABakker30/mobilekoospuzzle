@@ -11,6 +11,7 @@ import { computeShortCID } from '../lib/cid';
 import { saveJSONFile } from '../services/files';
 import { validateContainerV1, containerToV1Format } from '../lib/guards/containerV1';
 import { analyzeConvexHull, calculateOptimalCameraPosition } from '../lib/geometry/hull';
+import { PBRIntegrationService } from '../services/pbrIntegration';
 
 export default function PuzzleShapePage() {
   // Removed excessive logging to prevent console spam
@@ -76,6 +77,19 @@ export default function PuzzleShapePage() {
   };
 
   const [settings, setSettings] = useState<AppSettings>(loadSettings);
+  
+  // PBR Integration
+  const pbrService = useRef<PBRIntegrationService>(PBRIntegrationService.getInstance());
+  const [pbrState, setPbrState] = useState(pbrService.current.getState());
+  
+  // Initialize PBR integration when component mounts
+  useEffect(() => {
+    const unsubscribe = pbrService.current.onStateChange((state) => {
+      setPbrState(state);
+    });
+    
+    return unsubscribe;
+  }, []);
 
   // Handle coordinate changes with history tracking
   const handleCoordinatesChange = (newCoordinates: FCCCoord[]) => {
@@ -438,6 +452,12 @@ export default function PuzzleShapePage() {
 
   const handleSettingsChange = (newSettings: AppSettings) => {
     setSettings(newSettings);
+    
+    // Update PBR materials when settings change
+    if (shapeEditorRef.current) {
+      console.log('🎨 Settings changed, updating PBR materials...');
+      shapeEditorRef.current.updateMaterialSettings(newSettings.material);
+    }
   };
 
   // Save settings to localStorage whenever they change
