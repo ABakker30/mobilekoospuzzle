@@ -367,24 +367,29 @@ const ShapeEditor3D = forwardRef<ShapeEditor3DRef, ShapeEditor3DProps>(({
     bottomLight.position.set(0, -10, 0);
     scene.add(bottomLight);
 
-    // Setup camera controls
+    // Setup camera controls with full freedom of movement
     const controls = new OrbitControls(camera, renderer.domElement);
     controls.enableDamping = true; // Smooth camera movements
     controls.dampingFactor = 0.05;
-    controls.screenSpacePanning = false;
-    controls.minDistance = 2;
-    controls.maxDistance = 50;
-    controls.maxPolarAngle = Math.PI; // Allow full rotation
+    controls.screenSpacePanning = true; // Allow Y-axis panning
+    controls.minDistance = 1;
+    controls.maxDistance = 100;
     
-    // Enable touch controls for mobile
+    // Remove all rotation constraints for full Y-axis freedom
+    controls.minPolarAngle = 0; // Allow looking straight down
+    controls.maxPolarAngle = Math.PI; // Allow looking straight up
+    controls.minAzimuthAngle = -Infinity; // No horizontal limits
+    controls.maxAzimuthAngle = Infinity;
+    
+    // Enable all controls for mobile
     controls.enableRotate = true;
     controls.enableZoom = true;
     controls.enablePan = true;
     
-    // Touch settings for mobile
-    controls.rotateSpeed = 1.0;
-    controls.zoomSpeed = 1.2;
-    controls.panSpeed = 0.8;
+    // Enhanced touch settings for mobile with more sensitivity
+    controls.rotateSpeed = 1.2;
+    controls.zoomSpeed = 1.5;
+    controls.panSpeed = 1.0;
     
     console.log('ShapeEditor3D: OrbitControls initialized');
 
@@ -651,15 +656,21 @@ const ShapeEditor3D = forwardRef<ShapeEditor3DRef, ShapeEditor3DProps>(({
       }
     }
 
-    // Ensure controls are always enabled and properly configured
+    // Ensure controls are always enabled and properly configured with full Y-axis freedom
     if (controlsRef.current) {
       controlsRef.current.enabled = true;
       controlsRef.current.enableDamping = true;
       controlsRef.current.dampingFactor = 0.05;
-      controlsRef.current.screenSpacePanning = false;
-      controlsRef.current.minDistance = 2;
-      controlsRef.current.maxDistance = 50;
-      controlsRef.current.maxPolarAngle = Math.PI;
+      controlsRef.current.screenSpacePanning = true; // Allow Y-axis panning
+      controlsRef.current.minDistance = 1;
+      controlsRef.current.maxDistance = 100;
+      
+      // Remove all rotation constraints for full Y-axis freedom
+      controlsRef.current.minPolarAngle = 0; // Allow looking straight down
+      controlsRef.current.maxPolarAngle = Math.PI; // Allow looking straight up
+      controlsRef.current.minAzimuthAngle = -Infinity; // No horizontal limits
+      controlsRef.current.maxAzimuthAngle = Infinity;
+      
       controlsRef.current.update();
       
       // Make canvas focusable but don't auto-focus to avoid camera jumps

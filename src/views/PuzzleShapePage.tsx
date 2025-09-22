@@ -212,7 +212,7 @@ export default function PuzzleShapePage() {
     setShowLibraryBrowser(true);
   };
 
-  const handleLibraryContainerSelect = (container: any, name: string) => {
+  const handleLibraryContainerSelect = async (container: any, name: string) => {
     // Clear all existing data first
     setCoordinates([]);
     setContainerName('');
@@ -240,6 +240,21 @@ export default function PuzzleShapePage() {
       setOriginalCID(shortOriginalCID);
     } else {
       setOriginalCID('');
+    }
+
+    // Auto-apply center & orient for loaded shapes (if 4+ cells)
+    if (fccCoords.length >= 4) {
+      console.log('🎯 Auto-applying center & orient for loaded shape...');
+      // Use setTimeout to ensure the shape is rendered first
+      setTimeout(async () => {
+        try {
+          await handleCenterOrient();
+          console.log('🎯 Auto center & orient completed for loaded shape');
+        } catch (err) {
+          console.warn('🎯 Auto center & orient failed:', err);
+          // Don't show error to user for auto-orient, just log it
+        }
+      }, 500); // Wait 500ms for shape to render
     }
   };
 

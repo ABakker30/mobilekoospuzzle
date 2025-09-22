@@ -116,7 +116,7 @@ function calculateFaceCentroid(vertices: THREE.Vector3[]): THREE.Vector3 {
 }
 
 /**
- * Calculate transformation matrix to orient face normal to Y-axis (up)
+ * Calculate transformation matrix to orient face normal to -Y-axis (down)
  * and position centroid at origin
  */
 function calculateOrientationMatrix(faceNormal: THREE.Vector3, faceCentroid: THREE.Vector3): THREE.Matrix4 {
@@ -129,18 +129,18 @@ function calculateOrientationMatrix(faceNormal: THREE.Vector3, faceCentroid: THR
     -faceCentroid.z
   );
   
-  // Step 2: Rotate so face normal aligns with Y-axis (0, 1, 0)
-  const targetUp = new THREE.Vector3(0, 1, 0);
+  // Step 2: Rotate so face normal aligns with -Y-axis (0, -1, 0) - largest face points down
+  const targetDown = new THREE.Vector3(0, -1, 0);
   const rotationMatrix = new THREE.Matrix4();
   
-  // Calculate rotation quaternion from face normal to Y-axis
-  const quaternion = new THREE.Quaternion().setFromUnitVectors(faceNormal, targetUp);
+  // Calculate rotation quaternion from face normal to -Y-axis
+  const quaternion = new THREE.Quaternion().setFromUnitVectors(faceNormal, targetDown);
   rotationMatrix.makeRotationFromQuaternion(quaternion);
   
   // Step 3: Combine transformations (rotation first, then translation)
   matrix.multiplyMatrices(rotationMatrix, translationMatrix);
   
-  console.log(`🔍 Orientation: Face normal (${faceNormal.x.toFixed(3)}, ${faceNormal.y.toFixed(3)}, ${faceNormal.z.toFixed(3)}) → Y-axis`);
+  console.log(`🔍 Orientation: Face normal (${faceNormal.x.toFixed(3)}, ${faceNormal.y.toFixed(3)}, ${faceNormal.z.toFixed(3)}) → -Y-axis (down)`);
   console.log(`🔍 Orientation: Face centroid (${faceCentroid.x.toFixed(3)}, ${faceCentroid.y.toFixed(3)}, ${faceCentroid.z.toFixed(3)}) → Origin`);
   
   return matrix;
