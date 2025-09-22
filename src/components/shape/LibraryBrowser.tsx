@@ -71,12 +71,12 @@ export default function LibraryBrowser({ onContainerSelect, onClose, loading = f
   };
 
   const formatSize = (size: number | null): string => {
-    if (size === null) return 'Unknown';
+    if (size === null || size === undefined) return 'Size not computed';
     return `${size} cells`;
   };
 
   const formatCID = (cid: string): string => {
-    if (!cid) return 'No CID';
+    if (!cid || cid.trim() === '') return 'Computing...';
     return cid.substring(7, 15); // Show short CID
   };
 
@@ -219,7 +219,9 @@ export default function LibraryBrowser({ onContainerSelect, onClose, loading = f
               {searchQuery ? 'No containers match your search' : 'No containers available'}
             </div>
           ) : (
-            filteredContainers.map((item) => (
+            filteredContainers.map((item) => {
+              const displayName = item.name ? item.name.replace('.fcc.json', '') : 'NO NAME';
+              return (
               <div
                 key={item.name}
                 style={{
@@ -246,28 +248,7 @@ export default function LibraryBrowser({ onContainerSelect, onClose, loading = f
                     wordBreak: 'break-word',
                     lineHeight: '1.3'
                   }}>
-                    {(() => {
-                      // Debug logging for problematic items
-                      if (!item.name || item.name === 'Unknown' || item.name.trim() === '') {
-                        console.log('LibraryBrowser: Item with missing/unknown name:', { 
-                          name: item.name, 
-                          cid: item.cid, 
-                          size: item.size,
-                          url: item.url 
-                        });
-                      }
-                      
-                      // Display logic with better fallbacks
-                      if (item.name && item.name !== 'Unknown' && item.name.trim() !== '') {
-                        return item.name.replace('.fcc.json', '');
-                      } else if (item.size && typeof item.size === 'number') {
-                        return `${item.size} cells`;
-                      } else if (item.cid && item.cid !== 'No CID' && item.cid.trim() !== '') {
-                        return `Shape ${formatCID(item.cid)}`;
-                      } else {
-                        return 'Unnamed Shape';
-                      }
-                    })()}
+                    {displayName}
                   </div>
                   <div style={{
                     fontSize: '11px',
@@ -301,7 +282,8 @@ export default function LibraryBrowser({ onContainerSelect, onClose, loading = f
                   {containerLoading === item.name ? 'Loading...' : 'Load'}
                 </div>
               </div>
-            ))
+              );
+            })
           )}
         </div>
 

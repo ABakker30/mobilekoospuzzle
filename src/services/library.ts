@@ -32,27 +32,8 @@ export async function fetchLibraryManifest(): Promise<LibraryItem[]> {
     
     const items: LibraryItem[] = await response.json();
     
-    // Simple fix: ensure all items have proper names
-    return items.map(item => {
-      if (!item.name || item.name === 'Unknown' || item.name.trim() === '') {
-        // Extract filename from URL as fallback
-        if (item.url) {
-          const filename = item.url.split('/').pop() || '';
-          if (filename.endsWith('.fcc.json')) {
-            return { ...item, name: filename };
-          }
-        }
-        // If no URL, use size or CID as name
-        if (item.size && typeof item.size === 'number') {
-          return { ...item, name: `${item.size} cells.fcc.json` };
-        }
-        if (item.cid) {
-          return { ...item, name: `Shape_${item.cid.substring(7, 15)}.fcc.json` };
-        }
-        return { ...item, name: 'Unknown_Shape.fcc.json' };
-      }
-      return item;
-    });
+    // Just return the items as-is, we'll extract filenames from URLs in the UI
+    return items;
   } catch (error) {
     console.error('Library fetch error:', error);
     throw new Error('Failed to load shape library');
