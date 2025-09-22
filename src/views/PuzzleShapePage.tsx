@@ -1,11 +1,12 @@
 // Placeholder notice removed—page now functional.
 import React, { useState, useEffect, useRef } from 'react';
 import { Link } from 'react-router-dom';
+import * as THREE from 'three';
 import ShapeEditor3D, { ShapeEditor3DRef } from '../components/shape/ShapeEditor3D';
 import ShapeToolbar from '../components/shape/ShapeToolbar';
 import LibraryBrowser from '../components/shape/LibraryBrowser';
 import SettingsModal, { AppSettings } from '../components/shape/SettingsModal';
-import { FCCCoord } from '../lib/coords/fcc';
+import { FCCCoord, fccToWorld } from '../lib/coords/fcc';
 import { computeShortCID } from '../lib/cid';
 import { saveJSONFile } from '../services/files';
 import { validateContainerV1, containerToV1Format } from '../lib/guards/containerV1';
@@ -243,8 +244,9 @@ export default function PuzzleShapePage() {
     }
 
     // Auto-apply center & orient for loaded shapes (if 4+ cells)
+    // This only happens on initial load, never during editing
     if (fccCoords.length >= 4) {
-      console.log('🎯 Auto-applying center & orient for loaded shape...');
+      console.log('🎯 Auto-applying center & orient for LOADED shape (not during editing)...');
       // Use setTimeout to ensure the shape is rendered first
       setTimeout(async () => {
         try {
@@ -272,23 +274,34 @@ export default function PuzzleShapePage() {
       setLoading(true);
       console.log('🎯 Center & Orient: Starting hull analysis...');
       
-      // Get current world coordinates from ShapeEditor3D
+      // Get ShapeEditor3D reference
       if (!shapeEditorRef.current || !shapeEditorRef.current.getCellRecords) {
         setError('ShapeEditor3D not ready for orientation');
         return;
       }
 
-      const cellRecords = shapeEditorRef.current.getCellRecords();
-      if (!cellRecords || cellRecords.length === 0) {
-        setError('No cell records available for orientation');
+      // Get fresh world coordinates using the SAME method that works for initial load
+      // This ensures we analyze coordinates in the exact same way as the working auto-orient
+      console.log('🎯 Getting fresh world coordinates using ShapeEditor3D reset method...');
+      
+      // Force a reset to get fresh coordinates in the same format as initial load
+      const resetRecords = shapeEditorRef.current.resetToOriginalTransform ? 
+        shapeEditorRef.current.resetToOriginalTransform(coordinates) :
+        shapeEditorRef.current.getCellRecords();
+      
+      if (!resetRecords || resetRecords.length === 0) {
+        setError('Failed to get reset coordinates for hull analysis');
         return;
       }
-
-      // Extract world coordinates for hull analysis
-      const worldPoints = cellRecords.map((record: any) => record.worldCoord);
       
-      // Perform convex hull analysis
-      const hullAnalysis = analyzeConvexHull(worldPoints);
+      // Extract world coordinates from the reset records (same as initial load)
+      const freshWorldPoints = resetRecords.map((record: any) => record.worldCoord);
+      
+      console.log('🎯 Using ShapeEditor3D reset coordinates for hull analysis');
+      console.log(`🎯 Fresh coordinates: ${freshWorldPoints.length} points`);
+      
+      // Perform convex hull analysis on the reset coordinates
+      const hullAnalysis = analyzeConvexHull(freshWorldPoints);
       
       console.log(`🎯 Center & Orient: Hull analysis complete`);
       console.log(`🎯 Largest face area: ${hullAnalysis.largestFace.area.toFixed(3)}`);

@@ -24,6 +24,7 @@ interface ShapeEditor3DProps {
 export interface ShapeEditor3DRef {
   getCellRecords: () => CellRecord[];
   applyCenterOrientTransform: (transformMatrix: THREE.Matrix4) => Promise<void>;
+  resetToOriginalTransform: (engineCoords: FCCCoord[]) => CellRecord[];
 }
 
 const ShapeEditor3D = forwardRef<ShapeEditor3DRef, ShapeEditor3DProps>(({
@@ -61,6 +62,10 @@ const ShapeEditor3D = forwardRef<ShapeEditor3DRef, ShapeEditor3DProps>(({
   const [pendingAddPosition, setPendingAddPosition] = useState<CellRecord | null>(null);
   const neighborSpheresRef = useRef<THREE.Mesh[]>([]);
   const debugNeighborSpheresRef = useRef<THREE.Mesh[]>([]);
+  
+  // Transformation state for center & orient functionality
+  const [currentTransformation, setCurrentTransformation] = useState<THREE.Matrix4 | null>(null);
+  const [isTransformed, setIsTransformed] = useState(false);
 
   // Helper function to convert focal length to FOV
   const focalLengthToFOV = (focalLength: number): number => {
@@ -119,6 +124,18 @@ const ShapeEditor3D = forwardRef<ShapeEditor3DRef, ShapeEditor3DProps>(({
     
     // Clear pending add position
     setPendingAddPosition(null);
+  };
+
+  // Reset all transformations and recalculate world coordinates from engine coordinates
+  const resetToOriginalTransform = (engineCoords: FCCCoord[]): CellRecord[] => {
+    console.log(`🔄 RESET: Clearing transformations and recalculating from engine coordinates`);
+    
+    // Clear transformation state
+    setCurrentTransformation(null);
+    setIsTransformed(false);
+    
+    // Recalculate fresh world coordinates using standard world-space centering
+    return engineToWorldTransform(engineCoords);
   };
 
   // Transform engine coordinates to world coordinates with world-space centering
@@ -239,7 +256,13 @@ const ShapeEditor3D = forwardRef<ShapeEditor3DRef, ShapeEditor3DProps>(({
             z: worldPos.z - worldCenter.z
           };
           
-          const neighborWorldCoord = new THREE.Vector3(centeredWorldPos.x, centeredWorldPos.y, centeredWorldPos.z);
+          let neighborWorldCoord = new THREE.Vector3(centeredWorldPos.x, centeredWorldPos.y, centeredWorldPos.z);
+          
+          // Apply current transformation if one exists
+          if (currentTransformation) {
+            neighborWorldCoord = neighborWorldCoord.clone().applyMatrix4(currentTransformation);
+            console.log(`    Applied transformation: Engine(${neighborCoord.x},${neighborCoord.y},${neighborCoord.z}) -> Transformed World(${neighborWorldCoord.x.toFixed(2)},${neighborWorldCoord.y.toFixed(2)},${neighborWorldCoord.z.toFixed(2)})`);
+          }
           
           // No distance filtering needed for rhombohedral lattice - all 6 neighbors are valid
           const neighborRecord: CellRecord = {
@@ -437,19 +460,44 @@ const ShapeEditor3D = forwardRef<ShapeEditor3DRef, ShapeEditor3DProps>(({
     initializeThreeJS();
   }, []);
 
-  // Update CellRecords when coordinates change
+  // Update CellRecords when coordinates change - STABLE EDITING APPROACH
   useEffect(() => {
     console.log(`=== COORDINATES CHANGED ===`);
     console.log(`Input coordinates:`, coordinates);
+    console.log(`Current transformation state: isTransformed=${isTransformed}`);
     
-    // Transform coordinates to CellRecords
-    const newCellRecords = engineToWorldTransform(coordinates);
-    setCellRecords(newCellRecords);
-    
-    // Calculate neighbor records
-    const newNeighborRecords = calculateNeighborRecords(newCellRecords);
-    setNeighborRecords(newNeighborRecords);
-  }, [coordinates]);
+    if (isTransformed && currentTransformation) {
+      // STABLE EDITING: We're in a transformed state, maintain current coordinate space
+      console.log(`🎯 STABLE EDITING: Maintaining current transformed coordinate space`);
+      
+      // Create fresh world coordinates using standard centering
+      const freshRecords = engineToWorldTransform(coordinates);
+      
+      // Apply the SAME transformation to maintain spatial consistency
+      const stableRecords = freshRecords.map(record => ({
+        ...record,
+        worldCoord: record.worldCoord.clone().applyMatrix4(currentTransformation)
+      }));
+      
+      setCellRecords(stableRecords);
+      
+      // Calculate neighbors in the same transformed space
+      const newNeighborRecords = calculateNeighborRecords(stableRecords);
+      setNeighborRecords(newNeighborRecords);
+      
+      console.log(`🎯 STABLE: Applied consistent transformation to ${stableRecords.length} cells`);
+    } else {
+      // NOT TRANSFORMED: Use normal world-space centering
+      console.log(`📍 NORMAL: Using standard world-space centering`);
+      
+      const newCellRecords = engineToWorldTransform(coordinates);
+      setCellRecords(newCellRecords);
+      
+      // Calculate neighbor records
+      const newNeighborRecords = calculateNeighborRecords(newCellRecords);
+      setNeighborRecords(newNeighborRecords);
+    }
+  }, [coordinates, isTransformed, currentTransformation]);
 
   // Update invisible neighbor spheres for raycasting when neighborRecords change
   useEffect(() => {
@@ -516,6 +564,7 @@ const ShapeEditor3D = forwardRef<ShapeEditor3DRef, ShapeEditor3DProps>(({
   // Debug spheres disabled + mode switch protection
   useEffect(() => {
     console.log(`Edit mode changed to: ${editMode} - clearing pending actions for safety`);
+    console.log(`🎯 STABLE EDITING: Mode change should NOT trigger any transformations`);
     
     // Clear any pending actions when edit mode changes (prevents accidental actions)
     clearHoverEffects();
@@ -994,23 +1043,36 @@ const ShapeEditor3D = forwardRef<ShapeEditor3DRef, ShapeEditor3DProps>(({
       return cellRecords;
     },
     
+    resetToOriginalTransform: (engineCoords: FCCCoord[]) => {
+      return resetToOriginalTransform(engineCoords);
+    },
+    
     applyCenterOrientTransform: async (transformMatrix: THREE.Matrix4) => {
-      console.log('🎯 Applying center & orient transformation to cell records...');
+      console.log('🎯 Applying center & orient transformation with reset-based approach...');
       
-      // Apply transformation to all cell records' world coordinates
-      const transformedRecords = cellRecords.map(record => ({
+      // Step 1: Reset to original coordinates (clear any previous transformations)
+      const resetRecords = resetToOriginalTransform(coordinates);
+      console.log('🔄 Reset to original coordinates complete');
+      
+      // Step 2: Apply the new transformation to the reset coordinates
+      const transformedRecords = resetRecords.map(record => ({
         ...record,
         worldCoord: record.worldCoord.clone().applyMatrix4(transformMatrix)
       }));
       
-      // Update cell records state
+      // Step 3: Store the transformation matrix for consistent neighbor calculations
+      setCurrentTransformation(transformMatrix.clone());
+      setIsTransformed(true);
+      console.log('🎯 TRANSFORMATION STATE: Now in transformed mode - editing will be stable');
+      
+      // Step 4: Update cell records state
       setCellRecords(transformedRecords);
       
-      // Recalculate neighbors with new positions
+      // Step 5: Recalculate neighbors with the new transformation applied
       const newNeighborRecords = calculateNeighborRecords(transformedRecords);
       setNeighborRecords(newNeighborRecords);
       
-      // Calculate optimal camera position for the transformed shape
+      // Step 6: Calculate optimal camera position for the transformed shape
       if (cameraRef.current && controlsRef.current) {
         const worldPoints = transformedRecords.map(record => record.worldCoord);
         const { position, target } = calculateOptimalCameraPosition(worldPoints, cameraRef.current);
@@ -1023,9 +1085,10 @@ const ShapeEditor3D = forwardRef<ShapeEditor3DRef, ShapeEditor3DProps>(({
         console.log('🎯 Camera positioned for optimal viewing');
       }
       
-      console.log('🎯 Center & orient transformation complete');
+      console.log('🎯 Reset-based center & orient transformation complete');
+      console.log('🎯 Transformation matrix stored for consistent editing');
     }
-  }), [cellRecords, calculateNeighborRecords]);
+  }), [cellRecords, calculateNeighborRecords, coordinates, currentTransformation, resetToOriginalTransform]);
 
   return (
     <div 
