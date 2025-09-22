@@ -1,11 +1,24 @@
-import React, { useState, useRef } from 'react';
+import React, { useState, useRef, useEffect } from 'react';
+import { PBR_PRESETS, ExtendedMaterialSettings, DEFAULT_PBR_SETTINGS } from '../../lib/materials/pbrPresets';
+import { PBRAssetManager } from '../../services/pbrAssets';
 
+// Enhanced material settings with PBR support (extends legacy)
 export interface MaterialSettings {
-  type: 'glass' | 'metal' | 'paint' | 'plastic' | 'rusty_paint';
+  // Legacy properties
+  type: 'glass' | 'metal' | 'paint' | 'plastic' | 'rusty_paint' | 'pbr_gold' | 'pbr_steel' | 'pbr_brushed';
   color: string;
   metalness: number;
   transparency: number;
   reflectiveness: number; // Controls roughness (inverse relationship)
+  
+  // New PBR properties (optional for backward compatibility)
+  roughness?: number;
+  clearcoat?: number;
+  clearcoatRoughness?: number;
+  anisotropy?: number;
+  useHDR?: boolean;
+  hdrIntensity?: number;
+  preset?: string; // Key from PBR_PRESETS
 }
 
 export interface CameraSettings {
@@ -26,7 +39,16 @@ interface SettingsModalProps {
   onClose: () => void;
 }
 
-const materialPresets = {
+// Material preset type
+type MaterialPreset = Partial<MaterialSettings> & {
+  metalness: number;
+  transparency: number;
+  reflectiveness: number;
+  color: string;
+};
+
+// Legacy material presets
+const legacyMaterialPresets: Record<string, MaterialPreset> = {
   glass: { metalness: 0.0, transparency: 0.7, reflectiveness: 0.95, color: '#87CEEB' },
   metal: { metalness: 1.0, transparency: 0.0, reflectiveness: 0.9, color: '#C0C0C0' },
   paint: { metalness: 0.0, transparency: 0.0, reflectiveness: 0.2, color: '#4a90e2' },
@@ -34,11 +56,80 @@ const materialPresets = {
   rusty_paint: { metalness: 0.3, transparency: 0.0, reflectiveness: 0.1, color: '#CD853F' }
 };
 
+// PBR material presets (converted to MaterialSettings format)
+const pbrMaterialPresets: Record<string, MaterialPreset> = {
+  pbr_gold: {
+    metalness: 1.0,
+    transparency: 0.0,
+    reflectiveness: 0.78, // Inverse of roughness 0.22
+    color: '#D4AF37',
+    roughness: 0.22,
+    clearcoat: 0.6,
+    clearcoatRoughness: 0.18,
+    useHDR: true,
+    hdrIntensity: 1.0,
+    preset: 'gold'
+  },
+  pbr_steel: {
+    metalness: 1.0,
+    transparency: 0.0,
+    reflectiveness: 0.97, // Inverse of roughness 0.03
+    color: '#ffffff',
+    roughness: 0.03,
+    useHDR: true,
+    hdrIntensity: 1.0,
+    preset: 'stainlessSteel'
+  },
+  pbr_brushed: {
+    metalness: 1.0,
+    transparency: 0.0,
+    reflectiveness: 0.75, // Inverse of roughness 0.25
+    color: '#ffffff',
+    roughness: 0.25,
+    anisotropy: 0.9,
+    useHDR: true,
+    hdrIntensity: 1.0,
+    preset: 'brushedSteel'
+  }
+};
+
+// Combined material presets
+const allMaterialPresets: Record<string, MaterialPreset> = { ...legacyMaterialPresets, ...pbrMaterialPresets };
+
 export default function SettingsModal({ settings, onSettingsChange, onClose }: SettingsModalProps) {
+  // Add CSS animation for loading spinner
+  useEffect(() => {
+    const style = document.createElement('style');
+    style.textContent = `
+      @keyframes spin {
+        0% { transform: rotate(0deg); }
+        100% { transform: rotate(360deg); }
+      }
+    `;
+    document.head.appendChild(style);
+    
+    return () => {
+      document.head.removeChild(style);
+    };
+  }, []);
   const [position, setPosition] = useState({ x: 0, y: 0 });
   const [isDragging, setIsDragging] = useState(false);
   const [dragStart, setDragStart] = useState({ x: 0, y: 0 });
+  const [pbrLoading, setPbrLoading] = useState(false);
+  const [showAdvanced, setShowAdvanced] = useState(false);
   const modalRef = useRef<HTMLDivElement>(null);
+  
+  // Initialize PBR asset manager
+  useEffect(() => {
+    const assetManager = PBRAssetManager.getInstance();
+    
+    // Listen for loading state changes
+    const unsubscribe = assetManager.onLoadingStateChange((state) => {
+      setPbrLoading(state.isLoading);
+    });
+    
+    return unsubscribe;
+  }, []);
 
   const updateSettings = (updates: Partial<AppSettings>) => {
     onSettingsChange({ ...settings, ...updates });
@@ -53,13 +144,12 @@ export default function SettingsModal({ settings, onSettingsChange, onClose }: S
   };
 
   const handleMaterialTypeChange = (type: MaterialSettings['type']) => {
-    const preset = materialPresets[type];
+    const preset = allMaterialPresets[type];
+    if (!preset) return;
+    
     updateMaterial({
       type,
-      metalness: preset.metalness,
-      transparency: preset.transparency,
-      reflectiveness: preset.reflectiveness,
-      color: preset.color
+      ...preset // Spread all preset properties (typed correctly now)
     });
   };
 
@@ -276,11 +366,18 @@ export default function SettingsModal({ settings, onSettingsChange, onClose }: S
                   color: 'black'
                 }}
               >
-                <option value="glass">🔍 Glass</option>
-                <option value="metal">⚡ Metal</option>
-                <option value="paint">🎨 Paint</option>
-                <option value="plastic">🧊 Plastic</option>
-                <option value="rusty_paint">🦀 Rusty Paint</option>
+                <optgroup label="🎨 Basic Materials">
+                  <option value="glass">🔍 Glass</option>
+                  <option value="metal">⚡ Metal</option>
+                  <option value="paint">🎨 Paint</option>
+                  <option value="plastic">🧊 Plastic</option>
+                  <option value="rusty_paint">🦀 Rusty Paint</option>
+                </optgroup>
+                <optgroup label="✨ PBR Materials">
+                  <option value="pbr_gold">🥇 Gold (PBR)</option>
+                  <option value="pbr_steel">🔧 Stainless Steel (PBR)</option>
+                  <option value="pbr_brushed">🪚 Brushed Steel (PBR)</option>
+                </optgroup>
               </select>
             </div>
 
@@ -355,6 +452,141 @@ export default function SettingsModal({ settings, onSettingsChange, onClose }: S
                 style={{ width: '100%' }}
               />
             </div>
+
+            {/* PBR Loading Indicator */}
+            {pbrLoading && (
+              <div style={{
+                marginBottom: '16px',
+                padding: '12px',
+                backgroundColor: '#e3f2fd',
+                borderRadius: '6px',
+                display: 'flex',
+                alignItems: 'center',
+                gap: '8px',
+                fontSize: '14px',
+                color: '#1976d2'
+              }}>
+                <div style={{
+                  width: '16px',
+                  height: '16px',
+                  border: '2px solid #1976d2',
+                  borderTop: '2px solid transparent',
+                  borderRadius: '50%',
+                  animation: 'spin 1s linear infinite'
+                }} />
+                Loading PBR assets...
+              </div>
+            )}
+
+            {/* Advanced PBR Controls */}
+            {(settings.material.type?.startsWith('pbr_') || showAdvanced) && (
+              <div style={{
+                marginTop: '16px',
+                padding: '16px',
+                backgroundColor: '#f8f9fa',
+                borderRadius: '8px',
+                border: '1px solid #e9ecef'
+              }}>
+                <div style={{
+                  display: 'flex',
+                  justifyContent: 'space-between',
+                  alignItems: 'center',
+                  marginBottom: '12px'
+                }}>
+                  <h4 style={{ margin: 0, fontSize: '14px', fontWeight: '600' }}>
+                    ✨ Advanced PBR Settings
+                  </h4>
+                  {!settings.material.type?.startsWith('pbr_') && (
+                    <button
+                      onClick={() => setShowAdvanced(!showAdvanced)}
+                      style={{
+                        background: 'none',
+                        border: 'none',
+                        fontSize: '12px',
+                        cursor: 'pointer',
+                        color: '#6c757d'
+                      }}
+                    >
+                      {showAdvanced ? 'Hide' : 'Show'}
+                    </button>
+                  )}
+                </div>
+
+                {/* Roughness */}
+                {settings.material.roughness !== undefined && (
+                  <div style={{ marginBottom: '12px' }}>
+                    <label style={{ display: 'block', marginBottom: '4px', fontSize: '12px' }}>
+                      Roughness: {settings.material.roughness?.toFixed(2)}
+                    </label>
+                    <input
+                      type="range"
+                      min="0"
+                      max="1"
+                      step="0.01"
+                      value={settings.material.roughness || 0.5}
+                      onChange={(e) => updateMaterial({ roughness: parseFloat(e.target.value) })}
+                      style={{ width: '100%' }}
+                    />
+                  </div>
+                )}
+
+                {/* Clearcoat */}
+                {settings.material.clearcoat !== undefined && (
+                  <div style={{ marginBottom: '12px' }}>
+                    <label style={{ display: 'block', marginBottom: '4px', fontSize: '12px' }}>
+                      Clearcoat: {settings.material.clearcoat?.toFixed(2)}
+                    </label>
+                    <input
+                      type="range"
+                      min="0"
+                      max="1"
+                      step="0.01"
+                      value={settings.material.clearcoat || 0}
+                      onChange={(e) => updateMaterial({ clearcoat: parseFloat(e.target.value) })}
+                      style={{ width: '100%' }}
+                    />
+                  </div>
+                )}
+
+                {/* HDR Environment */}
+                {settings.material.useHDR !== undefined && (
+                  <div style={{ marginBottom: '12px' }}>
+                    <label style={{ 
+                      display: 'flex', 
+                      alignItems: 'center', 
+                      gap: '8px',
+                      fontSize: '12px',
+                      cursor: 'pointer'
+                    }}>
+                      <input
+                        type="checkbox"
+                        checked={settings.material.useHDR || false}
+                        onChange={(e) => updateMaterial({ useHDR: e.target.checked })}
+                      />
+                      Use HDR Environment (Realistic Reflections)
+                    </label>
+                  </div>
+                )}
+
+                {/* HDR Intensity */}
+                {settings.material.useHDR && settings.material.hdrIntensity !== undefined && (
+                  <div style={{ marginBottom: '12px' }}>
+                    <label style={{ display: 'block', marginBottom: '4px', fontSize: '12px' }}>
+                      HDR Intensity: {settings.material.hdrIntensity?.toFixed(1)}
+                    </label>
+                    <input
+                      type="range"
+                      min="0"
+                      max="3"
+                      step="0.1"
+                      value={settings.material.hdrIntensity || 1}
+                      onChange={(e) => updateMaterial({ hdrIntensity: parseFloat(e.target.value) })}
+                      style={{ width: '100%' }}
+                    />
+                  </div>
+                )}
+              </div>
+            )}
           </div>
         </div>
 
