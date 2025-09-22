@@ -173,10 +173,10 @@ export default function LibraryBrowser({ onContainerSelect, onClose, loading = f
 
         {/* Mode Selector */}
         <div style={{
-          padding: '16px 20px',
+          padding: '12px 16px',
           borderBottom: '1px solid #e9ecef',
           display: 'flex',
-          gap: '8px'
+          gap: '6px'
         }}>
           <button
             onClick={() => setMode('library')}
@@ -396,9 +396,10 @@ export default function LibraryBrowser({ onContainerSelect, onClose, loading = f
             margin: '0 0 24px 0',
             fontSize: '14px',
             color: '#6c757d',
-            lineHeight: '1.5'
+            lineHeight: '1.5',
+            maxWidth: '300px'
           }}>
-            Select a .fcc.json file from your computer to load a previously saved shape.
+            Select a .fcc.json file from your device to load a previously saved shape.
           </p>
           <button
             onClick={handleLoadLocalFile}

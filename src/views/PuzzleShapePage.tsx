@@ -26,6 +26,7 @@ export default function PuzzleShapePage() {
   const [error, setError] = useState<string>('');
   const [showLibraryBrowser, setShowLibraryBrowser] = useState(false);
   const [showSettings, setShowSettings] = useState(false);
+  const [needsAutoOrient, setNeedsAutoOrient] = useState(false);
   
   // Ref to access ShapeEditor3D for center & orient functionality
   const shapeEditorRef = useRef<ShapeEditor3DRef>(null);
@@ -171,6 +172,61 @@ export default function PuzzleShapePage() {
     updateCID();
   }, [coordinates]);
 
+  // Handle auto-orient when coordinates are set after container load
+  useEffect(() => {
+    console.log('🎯 AUTO-ORIENT: useEffect triggered');
+    console.log(`🎯 AUTO-ORIENT: needsAutoOrient = ${needsAutoOrient}`);
+    console.log(`🎯 AUTO-ORIENT: coordinates.length = ${coordinates.length}`);
+    
+    const handleAutoOrient = async () => {
+      // Check if we have a pending auto-orient request
+      if (needsAutoOrient && coordinates.length >= 4) {
+        console.log('🎯 AUTO-ORIENT: ✅ CONDITIONS MET - Starting auto-orient process');
+        console.log(`🎯 AUTO-ORIENT: Have ${coordinates.length} coordinates`);
+        
+        // Clear the flag
+        setNeedsAutoOrient(false);
+        
+        // Wait longer for first load after page refresh (Three.js needs more time to initialize)
+        const isFirstLoad = !(window as any).hasLoadedBefore;
+        const delay = isFirstLoad ? 2500 : 1000; // Longer delay for first load
+        
+        console.log(`🎯 AUTO-ORIENT: Using ${delay}ms delay (first load: ${isFirstLoad})`);
+        
+        setTimeout(async () => {
+          // Enhanced readiness check for first load
+          if (shapeEditorRef.current) {
+            try {
+              // Additional check: make sure ShapeEditor3D has cell records
+              const cellRecords = shapeEditorRef.current.getCellRecords();
+              if (!cellRecords || cellRecords.length === 0) {
+                console.warn('🎯 AUTO-ORIENT: ShapeEditor3D exists but no cell records yet, skipping auto-orient');
+                return;
+              }
+              
+              console.log(`🎯 AUTO-ORIENT: ShapeEditor3D fully ready with ${cellRecords.length} cell records, triggering button press...`);
+              await handleCenterOrient();
+              console.log('🎯 AUTO-ORIENT: Auto-orient completed successfully');
+              
+              // Mark that we've successfully loaded at least once
+              (window as any).hasLoadedBefore = true;
+            } catch (err) {
+              console.warn('🎯 AUTO-ORIENT: Auto-orient failed:', err);
+            }
+          } else {
+            console.warn('🎯 AUTO-ORIENT: ShapeEditor3D not ready, skipping auto-orient');
+          }
+        }, delay);
+      } else {
+        console.log('🎯 AUTO-ORIENT: ❌ CONDITIONS NOT MET');
+        console.log(`🎯 AUTO-ORIENT: needsAutoOrient = ${needsAutoOrient}`);
+        console.log(`🎯 AUTO-ORIENT: coordinates.length = ${coordinates.length} (need >= 4)`);
+      }
+    };
+    
+    handleAutoOrient();
+  }, [coordinates, needsAutoOrient]);
+
   // Save state to sessionStorage when coordinates change
   useEffect(() => {
     if (coordinates.length > 0) {
@@ -243,66 +299,18 @@ export default function PuzzleShapePage() {
     setShowLibraryBrowser(true);
   };
 
-  const handleLibraryContainerSelect = async (container: any, name: string) => {
-    // Clear all existing data first
-    setCoordinates([]);
-    setContainerName('');
-    setCurrentCID('');
-    setOriginalCID('');
-    setError('');
-    
-    // Process the container the same way as file loading
-    const validation = validateContainerV1(container);
-    
-    if (!validation.valid) {
-      setError(`Invalid container: ${validation.error}`);
-      return;
-    }
-    
-    const validContainer = validation.container!;
-    const fccCoords: FCCCoord[] = validContainer.cells!.map(([x, y, z]) => ({ x, y, z }));
-    
-    setCoordinates(fccCoords);
-    setContainerName(name.replace('.fcc.json', ''));
-    
-    // Set original CID for comparison
-    if (validContainer.cid) {
-      const shortOriginalCID = validContainer.cid.substring(7, 15);
-      setOriginalCID(shortOriginalCID);
-    } else {
-      setOriginalCID('');
-    }
-
-    // Auto-apply center & orient for loaded shapes (if 4+ cells)
-    // This only happens on initial load, never during editing
-    if (fccCoords.length >= 4) {
-      console.log('🎯 Auto-applying center & orient for LOADED shape (not during editing)...');
-      // Use setTimeout to ensure the shape is rendered first
-      setTimeout(async () => {
-        try {
-          await handleCenterOrient();
-          console.log('🎯 Auto center & orient completed for loaded shape');
-        } catch (err) {
-          console.warn('🎯 Auto center & orient failed:', err);
-          // Don't show error to user for auto-orient, just log it
-        }
-      }, 500); // Wait 500ms for shape to render
-    }
-  };
-
-  const handleLibraryClose = () => {
-    setShowLibraryBrowser(false);
-  };
-
   const handleCenterOrient = async () => {
+    console.log(`🎯 HULL: handleCenterOrient called with ${coordinates.length} coordinates`);
+    
     if (coordinates.length < 4) {
+      console.log('🎯 HULL: Not enough coordinates for hull analysis');
       setError('Need at least 4 cells for hull analysis');
       return;
     }
 
     try {
       setLoading(true);
-      console.log('🎯 Center & Orient: Starting hull analysis...');
+      console.log('🎯 HULL: Starting hull analysis...');
       
       // Get ShapeEditor3D reference
       if (!shapeEditorRef.current || !shapeEditorRef.current.getCellRecords) {
@@ -350,6 +358,78 @@ export default function PuzzleShapePage() {
     } finally {
       setLoading(false);
     }
+  };
+
+  const handleLibraryContainerSelect = async (container: any, name: string) => {
+    console.log('📦 CONTAINER LOAD: Starting container selection process...');
+    console.log(`📦 CONTAINER LOAD: Loading container: ${name}`);
+    
+    // Clear all existing data first - comprehensive reset
+    console.log('📦 CONTAINER LOAD: Clearing all existing state...');
+    setCoordinates([]);
+    setContainerName('');
+    setCurrentCID('');
+    setOriginalCID('');
+    setError('');
+    setLoading(false); // Ensure loading state is cleared
+    
+    // Force ShapeEditor3D to completely reset transformation state if it exists
+    if (shapeEditorRef.current && shapeEditorRef.current.resetToOriginalTransform) {
+      console.log('📦 CONTAINER LOAD: Forcing complete ShapeEditor3D transformation reset...');
+      try {
+        // Reset with empty coordinates to clear all transformation state
+        shapeEditorRef.current.resetToOriginalTransform([]);
+        console.log('📦 CONTAINER LOAD: ShapeEditor3D transformation state cleared');
+      } catch (err) {
+        console.warn('📦 CONTAINER LOAD: Failed to reset ShapeEditor3D state:', err);
+      }
+    }
+    
+    // Small delay to ensure state is fully cleared before loading new container
+    await new Promise(resolve => setTimeout(resolve, 100));
+    
+    // Process the container the same way as file loading
+    console.log('📦 CONTAINER LOAD: Validating container format...');
+    const validation = validateContainerV1(container);
+    
+    if (!validation.valid) {
+      console.error('📦 CONTAINER LOAD: Container validation failed:', validation.error);
+      setError(`Invalid container: ${validation.error}`);
+      return;
+    }
+    
+    const validContainer = validation.container!;
+    const fccCoords: FCCCoord[] = validContainer.cells!.map(([x, y, z]) => ({ x, y, z }));
+    
+    console.log(`📦 CONTAINER LOAD: Setting coordinates (${fccCoords.length} cells)...`);
+    setCoordinates(fccCoords);
+    setContainerName(name.replace('.fcc.json', ''));
+    
+    console.log('📦 CONTAINER LOAD: Container data loaded, coordinates set');
+    
+    // Set original CID for comparison
+    if (validContainer.cid) {
+      const shortOriginalCID = validContainer.cid.substring(7, 15);
+      setOriginalCID(shortOriginalCID);
+    } else {
+      setOriginalCID('');
+    }
+
+    // Mark that we want to auto-orient this shape (will be handled by useEffect)
+    if (fccCoords.length >= 4) {
+      console.log('🎯 AUTO-ORIENT: Marking shape for auto-orient...');
+      console.log(`🎯 AUTO-ORIENT: Shape has ${fccCoords.length} cells, will auto-orient when coordinates are set`);
+      
+      // Set React state to trigger auto-orient
+      console.log('🎯 AUTO-ORIENT: Setting needsAutoOrient to true...');
+      setNeedsAutoOrient(true);
+    } else {
+      console.log(`🎯 AUTO-ORIENT: Shape has only ${fccCoords.length} cells, skipping auto-orient (need 4+)`);
+    }
+  };
+
+  const handleLibraryClose = () => {
+    setShowLibraryBrowser(false);
   };
 
   const handleSettings = () => {
