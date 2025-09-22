@@ -1,5 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { LibraryItem, fetchLibraryManifest, fetchLibraryContainer, getContainersFromManifest, searchContainers, sortContainers } from '../../services/library';
+import { loadJSONFile } from '../../services/files';
+import { validateContainerV1 } from '../../lib/guards/containerV1';
 
 interface LibraryBrowserProps {
   onContainerSelect: (container: any, name: string) => void;
@@ -8,6 +10,7 @@ interface LibraryBrowserProps {
 }
 
 export default function LibraryBrowser({ onContainerSelect, onClose, loading = false }: LibraryBrowserProps) {
+  const [mode, setMode] = useState<'library' | 'local'>('library');
   const [containers, setContainers] = useState<LibraryItem[]>([]);
   const [filteredContainers, setFilteredContainers] = useState<LibraryItem[]>([]);
   const [searchQuery, setSearchQuery] = useState('');
@@ -16,8 +19,41 @@ export default function LibraryBrowser({ onContainerSelect, onClose, loading = f
   const [containerLoading, setContainerLoading] = useState<string | null>(null);
   const [error, setError] = useState<string>('');
 
-  // Load library manifest on mount
+  // Handle local file loading
+  const handleLoadLocalFile = async () => {
+    try {
+      setError('');
+      console.log('📂 LOCAL: Loading file from user device...');
+      
+      const fileData = await loadJSONFile();
+      console.log('📂 LOCAL: File loaded, validating format...');
+      
+      const validation = validateContainerV1(fileData);
+      if (!validation.valid) {
+        setError(`Invalid file format: ${validation.error}`);
+        return;
+      }
+      
+      const container = validation.container!;
+      const fileName = 'Local File'; // We don't have the actual filename from the file picker
+      
+      console.log('📂 LOCAL: File validated successfully');
+      console.log(`📂 LOCAL: Container has ${container.cells?.length || 0} cells`);
+      
+      // Close browser and load the container
+      onContainerSelect(container, fileName);
+      onClose();
+      
+    } catch (err) {
+      console.error('📂 LOCAL: Error loading local file:', err);
+      setError(`Failed to load file: ${(err as Error).message}`);
+    }
+  };
+
+  // Load library manifest on mount (only in library mode)
   useEffect(() => {
+    if (mode !== 'library') return;
+    
     console.log('LibraryBrowser: Component mounted, starting library load');
     
     const loadLibrary = async () => {
@@ -47,7 +83,7 @@ export default function LibraryBrowser({ onContainerSelect, onClose, loading = f
     };
 
     loadLibrary();
-  }, []);
+  }, [mode]);
 
   // Update filtered containers when search or sort changes
   useEffect(() => {
@@ -113,7 +149,7 @@ export default function LibraryBrowser({ onContainerSelect, onClose, loading = f
           alignItems: 'center'
         }}>
           <h2 style={{ margin: 0, fontSize: '20px', fontWeight: '600' }}>
-            Container Library
+            {mode === 'library' ? 'Shape Library' : 'Load Local File'}
           </h2>
           <button
             onClick={onClose}
@@ -135,7 +171,51 @@ export default function LibraryBrowser({ onContainerSelect, onClose, loading = f
           </button>
         </div>
 
-        {/* Search and Sort Controls */}
+        {/* Mode Selector */}
+        <div style={{
+          padding: '16px 20px',
+          borderBottom: '1px solid #e9ecef',
+          display: 'flex',
+          gap: '8px'
+        }}>
+          <button
+            onClick={() => setMode('library')}
+            style={{
+              flex: 1,
+              padding: '10px 16px',
+              backgroundColor: mode === 'library' ? '#007bff' : '#f8f9fa',
+              color: mode === 'library' ? 'white' : '#495057',
+              border: '1px solid #dee2e6',
+              borderRadius: '6px',
+              fontSize: '14px',
+              fontWeight: '500',
+              cursor: 'pointer',
+              transition: 'all 0.2s'
+            }}
+          >
+            📚 Browse Library
+          </button>
+          <button
+            onClick={() => setMode('local')}
+            style={{
+              flex: 1,
+              padding: '10px 16px',
+              backgroundColor: mode === 'local' ? '#007bff' : '#f8f9fa',
+              color: mode === 'local' ? 'white' : '#495057',
+              border: '1px solid #dee2e6',
+              borderRadius: '6px',
+              fontSize: '14px',
+              fontWeight: '500',
+              cursor: 'pointer',
+              transition: 'all 0.2s'
+            }}
+          >
+            📂 Load Local File
+          </button>
+        </div>
+
+        {/* Search and Sort Controls - Only show in library mode */}
+        {mode === 'library' && (
         <div style={{
           padding: '16px 20px',
           borderBottom: '1px solid #e9ecef',
@@ -173,8 +253,10 @@ export default function LibraryBrowser({ onContainerSelect, onClose, loading = f
             <option value="updated">Sort by Date</option>
           </select>
         </div>
+        )}
 
-        {/* Container List */}
+        {/* Content Area */}
+        {mode === 'library' ? (
         <div style={{
           flex: 1,
           overflowY: 'auto',
@@ -286,8 +368,77 @@ export default function LibraryBrowser({ onContainerSelect, onClose, loading = f
             })
           )}
         </div>
+        ) : (
+        <div style={{
+          flex: 1,
+          display: 'flex',
+          flexDirection: 'column',
+          alignItems: 'center',
+          justifyContent: 'center',
+          padding: '40px 20px',
+          textAlign: 'center'
+        }}>
+          <div style={{
+            fontSize: '48px',
+            marginBottom: '20px'
+          }}>
+            📂
+          </div>
+          <h3 style={{
+            margin: '0 0 12px 0',
+            fontSize: '18px',
+            fontWeight: '600',
+            color: '#495057'
+          }}>
+            Load Shape from Your Device
+          </h3>
+          <p style={{
+            margin: '0 0 24px 0',
+            fontSize: '14px',
+            color: '#6c757d',
+            lineHeight: '1.5'
+          }}>
+            Select a .fcc.json file from your computer to load a previously saved shape.
+          </p>
+          <button
+            onClick={handleLoadLocalFile}
+            disabled={loading}
+            style={{
+              padding: '12px 24px',
+              backgroundColor: '#007bff',
+              color: 'white',
+              border: 'none',
+              borderRadius: '8px',
+              fontSize: '16px',
+              fontWeight: '500',
+              cursor: loading ? 'not-allowed' : 'pointer',
+              opacity: loading ? 0.6 : 1,
+              transition: 'all 0.2s',
+              display: 'flex',
+              alignItems: 'center',
+              gap: '8px'
+            }}
+          >
+            📁 Choose File
+          </button>
+          {error && (
+            <div style={{
+              marginTop: '16px',
+              padding: '12px',
+              backgroundColor: '#f8d7da',
+              color: '#721c24',
+              borderRadius: '6px',
+              fontSize: '14px',
+              maxWidth: '400px'
+            }}>
+              {error}
+            </div>
+          )}
+        </div>
+        )}
 
-        {/* Footer */}
+        {/* Footer - Only show in library mode */}
+        {mode === 'library' && (
         <div style={{
           padding: '16px 20px',
           borderTop: '1px solid #e9ecef',
@@ -297,6 +448,7 @@ export default function LibraryBrowser({ onContainerSelect, onClose, loading = f
         }}>
           {filteredContainers.length} container{filteredContainers.length !== 1 ? 's' : ''} available
         </div>
+        )}
       </div>
     </div>
   );

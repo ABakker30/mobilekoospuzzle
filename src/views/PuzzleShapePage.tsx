@@ -185,31 +185,52 @@ export default function PuzzleShapePage() {
 
 
   const handleSave = async () => {
+    if (coordinates.length === 0) {
+      setError('Cannot save empty shape. Add some cells first.');
+      return;
+    }
+    
     setLoading(true);
     setError('');
     
     try {
+      console.log('💾 SAVE: Starting save process...');
+      console.log(`💾 SAVE: Saving ${coordinates.length} cells in engine format`);
+      
+      // Convert coordinates to engine format (integer arrays)
       const coordsArray = coordinates.map(coord => [coord.x, coord.y, coord.z]);
-      const fullCID = `sha256:${currentCID}${'0'.repeat(56)}`; // Placeholder for demo
+      console.log(`💾 SAVE: Engine coordinates:`, coordsArray);
+      
+      // Generate proper full CID from current coordinates
+      const fullCID = await computeShortCID(coordinates);
+      const properCID = `sha256:${fullCID}${'0'.repeat(64 - fullCID.length)}`;
+      console.log(`💾 SAVE: Generated CID: ${properCID}`);
       
       const container = containerToV1Format(
         coordsArray,
         containerName || 'Untitled Container',
-        fullCID,
+        properCID,
         {
           name: 'Mobile Shape Editor',
-          date: new Date().toISOString().split('T')[0]
+          date: new Date().toISOString().split('T')[0],
+          email: 'user@koospuzzle.com'
         }
       );
+      
+      console.log(`💾 SAVE: Container format:`, container);
       
       const filename = containerName 
         ? `${containerName.toLowerCase().replace(/\s+/g, '_')}.fcc.json`
         : 'container.fcc.json';
       
+      console.log(`💾 SAVE: Saving to file: ${filename}`);
       await saveJSONFile(container, filename);
       
       // Update original CID after successful save
       setOriginalCID(currentCID);
+      
+      console.log('💾 SAVE: File saved successfully!');
+      console.log(`💾 SAVE: Updated original CID to: ${currentCID}`);
       
     } catch (err) {
       setError(`Save failed: ${(err as Error).message}`);
