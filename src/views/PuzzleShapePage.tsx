@@ -78,9 +78,12 @@ export default function PuzzleShapePage() {
 
   // Handle coordinate changes with history tracking
   const handleCoordinatesChange = (newCoordinates: FCCCoord[]) => {
+    console.log(`📝 COORDINATE CHANGE: ${coordinates.length} → ${newCoordinates.length} cells`);
+    
     // Add current coordinates to history before changing (max 10 steps)
     setCoordinatesHistory(prev => {
       const newHistory = [coordinates, ...prev].slice(0, 10);
+      console.log(`📝 HISTORY: Added step, now ${newHistory.length} steps in history`);
       return newHistory;
     });
     setCoordinates(newCoordinates);
@@ -90,8 +93,14 @@ export default function PuzzleShapePage() {
   const handleUndo = () => {
     if (coordinatesHistory.length > 0) {
       const [previousCoordinates, ...remainingHistory] = coordinatesHistory;
+      console.log(`🔄 UNDO: Reverting to previous coordinates (${previousCoordinates.length} cells)`);
+      console.log(`🔄 UNDO: Remaining history steps: ${remainingHistory.length}`);
+      
+      // Set coordinates directly (this will trigger the transformation-aware coordinate update)
       setCoordinates(previousCoordinates);
       setCoordinatesHistory(remainingHistory);
+      
+      console.log(`🔄 UNDO: Coordinates reverted, transformation state will be preserved if active`);
     }
   };
   
@@ -383,7 +392,7 @@ export default function PuzzleShapePage() {
         <ShapeEditor3D
           ref={shapeEditorRef}
           coordinates={coordinates}
-          onCoordinatesChange={setCoordinates}
+          onCoordinatesChange={handleCoordinatesChange}
           editMode={editMode}
           editingEnabled={editingEnabled}
           settings={settings}
