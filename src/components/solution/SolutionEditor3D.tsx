@@ -95,13 +95,32 @@ const SolutionEditor3D = forwardRef<SolutionEditor3DRef, SolutionEditor3DProps>(
     
     containerRef.current.appendChild(renderer.domElement);
     
-    // Controls setup
+    // Controls setup with mobile optimization
     const controls = new OrbitControls(camera, renderer.domElement);
     controls.enableDamping = true;
     controls.dampingFactor = 0.05;
+    controls.screenSpacePanning = true; // Allow Y-axis panning
+    controls.minDistance = 1;
+    controls.maxDistance = 100;
+    
+    // Remove all rotation constraints for full freedom
+    controls.minPolarAngle = 0; // Allow looking straight down
+    controls.maxPolarAngle = Math.PI; // Allow looking straight up
+    controls.minAzimuthAngle = -Infinity; // No horizontal limits
+    controls.maxAzimuthAngle = Infinity;
+    
+    // Enable all controls explicitly for mobile
+    controls.enableRotate = true;
     controls.enableZoom = true;
     controls.enablePan = true;
+    
+    // Enhanced touch settings for mobile with more sensitivity
+    controls.rotateSpeed = 1.2;
+    controls.zoomSpeed = 1.5;
+    controls.panSpeed = 1.0;
+    
     controlsRef.current = controls;
+    console.log('SolutionEditor3D: OrbitControls initialized with mobile optimization');
     
     // Add comprehensive lighting for even illumination from all sides (same as Puzzle Shape page)
     const ambientLight = new THREE.AmbientLight(0x404040, 0.6 * settings.brightness); // Increased ambient
