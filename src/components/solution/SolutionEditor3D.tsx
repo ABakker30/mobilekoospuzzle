@@ -514,6 +514,7 @@ const SolutionEditor3D = forwardRef<SolutionEditor3DRef, SolutionEditor3DProps>(
       cells: placement.cells_ijk
     }));
   };
+
   
   // Clear orientation state only when solution changes (not settings)
   useEffect(() => {

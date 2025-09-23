@@ -43,10 +43,10 @@ export default function SolutionViewerPage() {
     return solution ? createDefaultSolutionSettings(solution.piecesUsed) : {
       pieceColors: {},
       visiblePieceCount: 0,
-      brightness: 1.0,
-      backgroundColor: '#f0f0f0',
-      metalness: 0.0,
-      reflectiveness: 0.0,
+      brightness: 2.8, // Increased brightness for better visibility
+      backgroundColor: '#000000', // Black background
+      metalness: 0.05, // Slight metallic appearance
+      reflectiveness: 0.85, // High reflectiveness for realistic materials
       transparency: 0.0,
       camera: {
         orthographic: false,

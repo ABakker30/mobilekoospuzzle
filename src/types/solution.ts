@@ -102,21 +102,17 @@ export const DEFAULT_PIECE_COLORS: Record<string, string> = {
 };
 
 // Generate default solution settings
-export function createDefaultSolutionSettings(piecesUsed: Record<string, number>): SolutionSettings {
-  const pieceColors: Record<string, string> = {};
-  
-  // Assign default colors to pieces
-  Object.keys(piecesUsed).forEach(pieceId => {
-    pieceColors[pieceId] = DEFAULT_PIECE_COLORS[pieceId] || '#888888';
-  });
-  
+export function createDefaultSolutionSettings(piecesUsed: Record<string, boolean>): SolutionSettings {
   return {
-    pieceColors,
-    visiblePieceCount: Object.keys(piecesUsed).length, // All pieces visible by default
-    brightness: 1.0,
-    backgroundColor: '#f0f0f0',
-    metalness: 0.0,
-    reflectiveness: 0.0,
+    pieceColors: Object.keys(piecesUsed).reduce((colors, piece) => {
+      colors[piece] = DEFAULT_PIECE_COLORS[piece] || '#888888';
+      return colors;
+    }, {} as Record<string, string>),
+    visiblePieceCount: Object.keys(piecesUsed).length,
+    brightness: 2.8, // Increased brightness for better visibility
+    backgroundColor: '#000000', // Black background
+    metalness: 0.05, // Slight metallic appearance
+    reflectiveness: 0.85, // High reflectiveness for realistic materials
     transparency: 0.0,
     camera: {
       orthographic: false,
