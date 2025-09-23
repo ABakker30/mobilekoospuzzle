@@ -2,6 +2,7 @@ import React, { useState, useRef } from 'react';
 import { ModeToolbarProps, ModeViewerProps } from '../../../types/workspace';
 import ShapeEditor3D, { ShapeEditor3DRef } from '../../shape/ShapeEditor3D';
 import { useAuth } from '../../../hooks/useAuth';
+import { useWorkspace } from '../../workspace/WorkspaceProvider';
 import { shapeService } from '../../../services/content/ShapeService';
 
 // Convert workspace settings to V1 AppSettings format
@@ -30,6 +31,7 @@ export const PuzzleShapeToolbar: React.FC<ModeToolbarProps> = ({
   onModeStateChange
 }) => {
   const { user } = useAuth();
+  const { updateCoordinates } = useWorkspace();
   const [isLoading, setIsLoading] = useState(false);
 
   const handleSaveShape = async () => {
@@ -57,6 +59,68 @@ export const PuzzleShapeToolbar: React.FC<ModeToolbarProps> = ({
       alert('Failed to save shape. Please try again.');
     } finally {
       setIsLoading(false);
+    }
+  };
+
+  const handleLoadShape = async () => {
+    try {
+      // Use the File System Access API or fallback to input element
+      const fileHandle = await (window as any).showOpenFilePicker({
+        types: [{
+          description: 'Container files',
+          accept: { 'application/json': ['.json'] }
+        }]
+      });
+      
+      const file = await fileHandle[0].getFile();
+      const text = await file.text();
+      const container = JSON.parse(text);
+      
+      // Convert container coordinates to FCCCoord format
+      if (container.coordinates && Array.isArray(container.coordinates)) {
+        const coordinates = container.coordinates.map((coord: any) => ({
+          i: coord.i || 0,
+          j: coord.j || 0, 
+          k: coord.k || 0,
+          x: coord.x || 0,
+          y: coord.y || 0,
+          z: coord.z || 0
+        }));
+        
+        // Update workspace coordinates directly
+        updateCoordinates(coordinates);
+        alert(`Loaded ${coordinates.length} coordinates from container file`);
+      }
+    } catch (error) {
+      // Fallback for browsers without File System Access API
+      const input = document.createElement('input');
+      input.type = 'file';
+      input.accept = '.json';
+      input.onchange = async (e) => {
+        const file = (e.target as HTMLInputElement).files?.[0];
+        if (file) {
+          const text = await file.text();
+          try {
+            const container = JSON.parse(text);
+            if (container.coordinates && Array.isArray(container.coordinates)) {
+              const coordinates = container.coordinates.map((coord: any) => ({
+                i: coord.i || 0,
+                j: coord.j || 0, 
+                k: coord.k || 0,
+                x: coord.x || 0,
+                y: coord.y || 0,
+                z: coord.z || 0
+              }));
+              
+              updateCoordinates(coordinates);
+              alert(`Loaded ${coordinates.length} coordinates from container file`);
+            }
+          } catch (parseError) {
+            alert('Invalid container file format');
+          }
+        }
+      };
+      input.click();
     }
   };
 
@@ -100,6 +164,21 @@ export const PuzzleShapeToolbar: React.FC<ModeToolbarProps> = ({
             {settings.brightness.toFixed(1)}
           </span>
         </div>
+
+        <button
+          onClick={handleLoadShape}
+          style={{
+            padding: '0.5rem 1rem',
+            background: '#007bff',
+            color: 'white',
+            border: 'none',
+            borderRadius: '6px',
+            cursor: 'pointer',
+            fontSize: '0.875rem'
+          }}
+        >
+          📁 Load Container
+        </button>
 
         <button
           onClick={handleSaveShape}
