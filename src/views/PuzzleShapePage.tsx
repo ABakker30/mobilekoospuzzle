@@ -39,14 +39,14 @@ export default function PuzzleShapePage() {
         const parsed = JSON.parse(savedSettings);
         // Validate that all required properties exist, merge with defaults if needed
         return {
-          brightness: parsed.brightness ?? 1.8,
-          backgroundColor: parsed.backgroundColor ?? '#ffffff',
+          brightness: parsed.brightness ?? 4.0,
+          backgroundColor: parsed.backgroundColor ?? '#000000',
           material: {
             type: parsed.material?.type ?? 'paint',
             color: parsed.material?.color ?? '#4a90e2',
-            metalness: parsed.material?.metalness ?? 0.0,
+            metalness: parsed.material?.metalness ?? 0.06,
             transparency: parsed.material?.transparency ?? 0.0,
-            reflectiveness: parsed.material?.reflectiveness ?? 0.2
+            reflectiveness: parsed.material?.reflectiveness ?? 0.80
           },
           camera: {
             orthographic: parsed.camera?.orthographic ?? false,
@@ -60,14 +60,14 @@ export default function PuzzleShapePage() {
     
     // Return defaults if loading failed
     return {
-      brightness: 1.8,
-      backgroundColor: '#ffffff',
+      brightness: 4.0,
+      backgroundColor: '#000000',
       material: {
         type: 'paint',
         color: '#4a90e2',
-        metalness: 0.0,
+        metalness: 0.06,
         transparency: 0.0,
-        reflectiveness: 0.2
+        reflectiveness: 0.80
       },
       camera: {
         orthographic: false,
