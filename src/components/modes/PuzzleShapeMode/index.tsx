@@ -4,6 +4,7 @@ import ShapeEditor3D, { ShapeEditor3DRef } from '../../shape/ShapeEditor3D';
 import { useAuth } from '../../../hooks/useAuth';
 import { useWorkspace } from '../../workspace/WorkspaceProvider';
 import { shapeService } from '../../../services/content/ShapeService';
+import { LibraryBrowser } from '../../library/LibraryBrowser';
 
 // Convert workspace settings to V1 AppSettings format
 const convertToV1Settings = (workspaceSettings: any) => {
@@ -33,6 +34,7 @@ export const PuzzleShapeToolbar: React.FC<ModeToolbarProps> = ({
   const { user } = useAuth();
   const { updateCoordinates } = useWorkspace();
   const [isLoading, setIsLoading] = useState(false);
+  const [showLibrary, setShowLibrary] = useState(false);
 
   const handleSaveShape = async () => {
     if (!user) {
@@ -60,6 +62,15 @@ export const PuzzleShapeToolbar: React.FC<ModeToolbarProps> = ({
     } finally {
       setIsLoading(false);
     }
+  };
+
+  const handleBrowseLibrary = () => {
+    setShowLibrary(true);
+  };
+
+  const handleLibraryShapeSelect = (coordinates: any[]) => {
+    updateCoordinates(coordinates);
+    alert(`Loaded ${coordinates.length} coordinates from library shape`);
   };
 
   const handleLoadShape = async () => {
@@ -166,6 +177,21 @@ export const PuzzleShapeToolbar: React.FC<ModeToolbarProps> = ({
         </div>
 
         <button
+          onClick={handleBrowseLibrary}
+          style={{
+            padding: '0.5rem 1rem',
+            background: '#17a2b8',
+            color: 'white',
+            border: 'none',
+            borderRadius: '6px',
+            cursor: 'pointer',
+            fontSize: '0.875rem'
+          }}
+        >
+          📚 Browse Library
+        </button>
+
+        <button
           onClick={handleLoadShape}
           style={{
             padding: '0.5rem 1rem',
@@ -177,7 +203,7 @@ export const PuzzleShapeToolbar: React.FC<ModeToolbarProps> = ({
             fontSize: '0.875rem'
           }}
         >
-          📁 Load Container
+          📁 Load File
         </button>
 
         <button
@@ -197,6 +223,12 @@ export const PuzzleShapeToolbar: React.FC<ModeToolbarProps> = ({
           {isLoading ? 'Saving...' : user ? '💾 Save Shape' : '🔒 Sign in to Save'}
         </button>
       </div>
+
+      <LibraryBrowser
+        isOpen={showLibrary}
+        onClose={() => setShowLibrary(false)}
+        onShapeSelect={handleLibraryShapeSelect}
+      />
     </div>
   );
 };
