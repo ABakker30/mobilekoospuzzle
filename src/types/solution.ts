@@ -63,6 +63,11 @@ export interface SolutionSettings {
     environment: 'studio' | 'outdoor' | 'sunset';
     intensity: number; // 0.0 to 3.0
   };
+  // Bond Settings
+  bonds: {
+    enabled: boolean;
+    thickness: number; // 0.1 to 1.0 (relative to sphere radius)
+  };
 }
 
 // Professional color palette for distinct piece visualization
@@ -127,6 +132,10 @@ export function createDefaultSolutionSettings(piecesUsed: Record<string, number>
       enabled: false,
       environment: 'studio',
       intensity: 1.0
+    },
+    bonds: {
+      enabled: true, // Default to showing bonds for better visualization
+      thickness: 0.4 // 40% of sphere radius
     }
   };
 }

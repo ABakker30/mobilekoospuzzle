@@ -5,7 +5,7 @@ import React, { useRef, useEffect, useState, forwardRef, useImperativeHandle } f
 import * as THREE from 'three';
 import { OrbitControls } from 'three/addons/controls/OrbitControls.js';
 import { SolutionFile, SolutionSettings, PieceRenderData } from '../../types/solution';
-import { fccToWorld, centerFCCCoords } from '../../lib/coords/fcc';
+import { fccToWorld, centerFCCCoords, FCCCoord } from '../../lib/coords/fcc';
 import { calculateOptimalCameraPosition, analyzeConvexHull } from '../../lib/geometry/hull';
 import { PBRIntegrationService } from '../../services/pbrIntegration';
 import DebugModal from './DebugModal';
@@ -382,30 +382,121 @@ const SolutionEditor3D = forwardRef<SolutionEditor3DRef, SolutionEditor3DProps>(
     });
   };
 
+  // Detect adjacent spheres within a piece (for bond creation)
+  const findAdjacentSpheres = (spherePositions: THREE.Vector3[], sphereRadius: number): Array<[number, number]> => {
+    const adjacentPairs: Array<[number, number]> = [];
+    const bondDistance = sphereRadius * 2.0; // Distance between sphere centers when they should be bonded
+    const tolerance = sphereRadius * 0.3; // 30% tolerance for bond detection
+    
+    for (let i = 0; i < spherePositions.length; i++) {
+      for (let j = i + 1; j < spherePositions.length; j++) {
+        const pos1 = spherePositions[i];
+        const pos2 = spherePositions[j];
+        
+        // Calculate actual distance between sphere centers in world coordinates
+        const distance = pos1.distanceTo(pos2);
+        
+        // Create bond if spheres are approximately 2 × radius apart (touching or nearly touching)
+        if (Math.abs(distance - bondDistance) <= tolerance) {
+          adjacentPairs.push([i, j]);
+        }
+      }
+    }
+    
+    return adjacentPairs;
+  };
+
+  // Create bond cylinder between two sphere positions
+  const createBond = (pos1: THREE.Vector3, pos2: THREE.Vector3, material: THREE.Material, sphereRadius: number): THREE.Mesh => {
+    // Always use a default thickness if not specified
+    const bondThickness = settings?.bonds?.thickness ?? 0.3; // Default to 0.3 if undefined
+    const bondRadius = sphereRadius * bondThickness;
+    const distance = pos1.distanceTo(pos2);
+    
+    // Create high-quality cylinder geometry
+    const geometry = new THREE.CylinderGeometry(bondRadius, bondRadius, distance, 16, 1);
+    const bond = new THREE.Mesh(geometry, material);
+    
+    // Position cylinder between the two spheres
+    const midpoint = new THREE.Vector3().addVectors(pos1, pos2).multiplyScalar(0.5);
+    bond.position.copy(midpoint);
+    
+    // Orient cylinder to connect the two spheres
+    const direction = new THREE.Vector3().subVectors(pos2, pos1).normalize();
+    const up = new THREE.Vector3(0, 1, 0);
+    
+    // If direction is parallel to up vector, use a different reference
+    if (Math.abs(direction.dot(up)) > 0.99) {
+      up.set(1, 0, 0);
+    }
+    
+    // Create rotation matrix to align cylinder with bond direction
+    const quaternion = new THREE.Quaternion().setFromUnitVectors(up, direction);
+    bond.setRotationFromQuaternion(quaternion);
+    
+    bond.castShadow = true;
+    bond.receiveShadow = true;
+    
+    return bond;
+  };
+
   // Create piece render data with coordinate-based ordering
   const createPieceRenderData = (): PieceRenderData[] => {
-    // Calculate center position for each piece and sort by -y, -x, -z
+    // Calculate center position for each piece using FINAL oriented coordinates
     const placementsWithCenters = solution.placements.map(placement => {
-      // Calculate center of piece in world coordinates
-      const worldPositions = placement.cells_ijk.map(cell => {
-        const fccCoord = { x: cell[0], y: cell[1], z: cell[2] };
-        return fccToWorld(fccCoord);
-      });
+      let center: { x: number; y: number; z: number };
       
-      const center = {
-        x: worldPositions.reduce((sum, pos) => sum + pos.x, 0) / worldPositions.length,
-        y: worldPositions.reduce((sum, pos) => sum + pos.y, 0) / worldPositions.length,
-        z: worldPositions.reduce((sum, pos) => sum + pos.z, 0) / worldPositions.length
-      };
+      if (isOrientedRef.current && orientedWorldPositionsRef.current.length > 0) {
+        // Use oriented coordinates for sorting (after hull-based orientation)
+        const allCells = solution.placements.flatMap(p => p.cells_ijk);
+        const pieceOrientedPositions: THREE.Vector3[] = [];
+        
+        placement.cells_ijk.forEach(cell => {
+          const globalCellIndex = allCells.findIndex(c => c[0] === cell[0] && c[1] === cell[1] && c[2] === cell[2]);
+          if (globalCellIndex >= 0 && globalCellIndex < orientedWorldPositionsRef.current.length) {
+            pieceOrientedPositions.push(orientedWorldPositionsRef.current[globalCellIndex]);
+          }
+        });
+        
+        if (pieceOrientedPositions.length > 0) {
+          center = {
+            x: pieceOrientedPositions.reduce((sum, pos) => sum + pos.x, 0) / pieceOrientedPositions.length,
+            y: pieceOrientedPositions.reduce((sum, pos) => sum + pos.y, 0) / pieceOrientedPositions.length,
+            z: pieceOrientedPositions.reduce((sum, pos) => sum + pos.z, 0) / pieceOrientedPositions.length
+          };
+        } else {
+          // Fallback to original world coordinates
+          const worldPositions = placement.cells_ijk.map(cell => {
+            const fccCoord = { x: cell[0], y: cell[1], z: cell[2] };
+            return fccToWorld(fccCoord);
+          });
+          center = {
+            x: worldPositions.reduce((sum, pos) => sum + pos.x, 0) / worldPositions.length,
+            y: worldPositions.reduce((sum, pos) => sum + pos.y, 0) / worldPositions.length,
+            z: worldPositions.reduce((sum, pos) => sum + pos.z, 0) / worldPositions.length
+          };
+        }
+      } else {
+        // Use original world coordinates (before orientation)
+        const worldPositions = placement.cells_ijk.map(cell => {
+          const fccCoord = { x: cell[0], y: cell[1], z: cell[2] };
+          return fccToWorld(fccCoord);
+        });
+        center = {
+          x: worldPositions.reduce((sum, pos) => sum + pos.x, 0) / worldPositions.length,
+          y: worldPositions.reduce((sum, pos) => sum + pos.y, 0) / worldPositions.length,
+          z: worldPositions.reduce((sum, pos) => sum + pos.z, 0) / worldPositions.length
+        };
+      }
       
       return { placement, center };
     });
     
-    // Sort by -y, -x, -z (negative values for descending order)
+    // Sort by +y, -x, -z (bottom to top ordering using FINAL coordinates)
     placementsWithCenters.sort((a, b) => {
-      // Primary sort: -y (higher y values first)
+      // Primary sort: +y (lower y values first - bottom pieces show first)
       if (Math.abs(a.center.y - b.center.y) > 0.001) {
-        return b.center.y - a.center.y;
+        return a.center.y - b.center.y;
       }
       // Secondary sort: -x (higher x values first)  
       if (Math.abs(a.center.x - b.center.x) > 0.001) {
@@ -474,6 +565,7 @@ const SolutionEditor3D = forwardRef<SolutionEditor3DRef, SolutionEditor3DProps>(
       
       // Create high-quality spheres for each cell in the piece
       const sphereGeometry = new THREE.SphereGeometry(sphereRadius, 32, 24); // High quality mesh
+      const spherePositions: THREE.Vector3[] = [];
       
       piece.cells.forEach((cell, cellIndex) => {
         const sphere = new THREE.Mesh(sphereGeometry, material.clone());
@@ -482,20 +574,36 @@ const SolutionEditor3D = forwardRef<SolutionEditor3DRef, SolutionEditor3DProps>(
         const allCells = solution.placements.flatMap(p => p.cells_ijk);
         const globalCellIndex = allCells.findIndex(c => c[0] === cell[0] && c[1] === cell[1] && c[2] === cell[2]);
         
+        let spherePosition: THREE.Vector3;
+        
         // Use oriented position if available, otherwise convert from engine coordinates
         if (isOrientedRef.current && orientedWorldPositionsRef.current.length > 0 && globalCellIndex >= 0 && globalCellIndex < orientedWorldPositionsRef.current.length) {
           // Use pre-computed oriented world position (Step 7 coordinates)
-          sphere.position.copy(orientedWorldPositionsRef.current[globalCellIndex]);
+          spherePosition = orientedWorldPositionsRef.current[globalCellIndex].clone();
+          sphere.position.copy(spherePosition);
         } else {
           // Fallback: convert from engine coordinates (Steps 1-2)
           const fccCoord = { x: cell[0], y: cell[1], z: cell[2] };
           const worldPos = fccToWorld(fccCoord);
-          sphere.position.set(worldPos.x, worldPos.y, worldPos.z);
+          spherePosition = new THREE.Vector3(worldPos.x, worldPos.y, worldPos.z);
+          sphere.position.copy(spherePosition);
         }
+        
+        spherePositions.push(spherePosition);
         
         sphere.castShadow = true;
         sphere.receiveShadow = true;
         pieceGroup.add(sphere);
+      });
+
+      // ALWAYS CREATE BONDS - simple and direct
+      const adjacentPairs = findAdjacentSpheres(spherePositions, sphereRadius);
+      
+      adjacentPairs.forEach(([i, j]) => {
+        const pos1 = spherePositions[i];
+        const pos2 = spherePositions[j];
+        const bond = createBond(pos1, pos2, material.clone(), sphereRadius);
+        pieceGroup.add(bond);
       });
       
       sceneRef.current!.add(pieceGroup);
@@ -509,7 +617,7 @@ const SolutionEditor3D = forwardRef<SolutionEditor3DRef, SolutionEditor3DProps>(
       }, 100);
     }
     
-  }, [solution, settings.pieceColors, settings.visiblePieceCount]);
+  }, [solution, settings.pieceColors, settings.visiblePieceCount, settings.bonds?.enabled, settings.bonds?.thickness]);
 
   // Disable PBR service to prevent conflicts
   // useEffect(() => {
@@ -647,53 +755,61 @@ const SolutionEditor3D = forwardRef<SolutionEditor3DRef, SolutionEditor3DProps>(
     });
     pieceGroupsRef.current.clear();
     
-    // Re-create pieces with oriented positions
+    // Re-render pieces with oriented coordinates AND BONDS
     const pieceData = createPieceRenderData();
     const sphereRadius = calculateOptimalSphereRadius();
     
     pieceData.forEach((piece) => {
-    const pieceGroup = new THREE.Group();
-    pieceGroup.name = `piece_${piece.id}`;
-    pieceGroup.visible = piece.visible;
-    
-    // Create material for this piece
-    const material = new THREE.MeshStandardMaterial({
-      color: new THREE.Color(piece.color),
-      transparent: true,
-      opacity: Math.max(0.1, 1.0 - settings.transparency),
-      metalness: settings.metalness,
-      roughness: 1.0 - settings.reflectiveness
+      const pieceGroup = new THREE.Group();
+      pieceGroup.name = `piece_${piece.id}`;
+      pieceGroup.visible = piece.visible;
+      
+      // Create material for this piece
+      const material = createMaterial(piece.color);
+      
+      // Create spheres using oriented coordinates
+      const sphereGeometry = new THREE.SphereGeometry(sphereRadius, 32, 24);
+      const spherePositions: THREE.Vector3[] = [];
+      
+      piece.cells.forEach((cell, cellIndex) => {
+        const sphere = new THREE.Mesh(sphereGeometry, material.clone());
+        
+        // Use oriented coordinates
+        const allCells = solution.placements.flatMap(p => p.cells_ijk);
+        const globalCellIndex = allCells.findIndex(c => c[0] === cell[0] && c[1] === cell[1] && c[2] === cell[2]);
+        
+        let spherePosition: THREE.Vector3;
+        if (globalCellIndex >= 0 && globalCellIndex < orientedWorldPositionsRef.current.length) {
+          spherePosition = orientedWorldPositionsRef.current[globalCellIndex].clone();
+          sphere.position.copy(spherePosition);
+        } else {
+          // Fallback
+          const fccCoord = { x: cell[0], y: cell[1], z: cell[2] };
+          const worldPos = fccToWorld(fccCoord);
+          spherePosition = new THREE.Vector3(worldPos.x, worldPos.y, worldPos.z);
+          sphere.position.copy(spherePosition);
+        }
+        
+        spherePositions.push(spherePosition);
+        
+        sphere.castShadow = true;
+        sphere.receiveShadow = true;
+        pieceGroup.add(sphere);
+      });
+      
+      // ALWAYS CREATE BONDS AFTER ORIENTATION TOO
+      const adjacentPairs = findAdjacentSpheres(spherePositions, sphereRadius);
+      
+      adjacentPairs.forEach(([i, j]) => {
+        const pos1 = spherePositions[i];
+        const pos2 = spherePositions[j];
+        const bond = createBond(pos1, pos2, material.clone(), sphereRadius);
+        pieceGroup.add(bond);
+      });
+      
+      sceneRef.current!.add(pieceGroup);
+      pieceGroupsRef.current.set(piece.id, pieceGroup);
     });
-    
-    // Create high-quality spheres for each cell in the piece
-    const sphereGeometry = new THREE.SphereGeometry(sphereRadius, 32, 24); // High quality mesh
-    
-    piece.cells.forEach((cell, cellIndex) => {
-      const sphere = new THREE.Mesh(sphereGeometry, material.clone());
-      
-      // Calculate global cell index to find the oriented position
-      const allCells = solution.placements.flatMap(p => p.cells_ijk);
-      const globalCellIndex = allCells.findIndex(c => c[0] === cell[0] && c[1] === cell[1] && c[2] === cell[2]);
-      
-      // Use oriented position if available, otherwise convert from engine coordinates
-      if (isOrientedRef.current && orientedWorldPositionsRef.current.length > 0 && globalCellIndex >= 0 && globalCellIndex < orientedWorldPositionsRef.current.length) {
-        // Use pre-computed oriented world position (Step 7 coordinates)
-        sphere.position.copy(orientedWorldPositionsRef.current[globalCellIndex]);
-      } else {
-        // Fallback: convert from engine coordinates (Steps 1-2)
-        const fccCoord = { x: cell[0], y: cell[1], z: cell[2] };
-        const worldPos = fccToWorld(fccCoord);
-        sphere.position.set(worldPos.x, worldPos.y, worldPos.z);
-      }
-      
-      sphere.castShadow = true;
-      sphere.receiveShadow = true;
-      pieceGroup.add(sphere);
-    });
-    
-    sceneRef.current!.add(pieceGroup);
-    pieceGroupsRef.current.set(piece.id, pieceGroup);
-  });
   
   };
 

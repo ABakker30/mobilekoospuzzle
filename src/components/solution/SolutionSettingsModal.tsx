@@ -295,6 +295,58 @@ export default function SolutionSettingsModal({
             </div>
           </div>
 
+          {/* Bonds Section */}
+          <div style={{ marginBottom: '24px' }}>
+            <h3 style={{ margin: '0 0 16px 0', fontSize: '16px', fontWeight: '600' }}>
+              🔗 Bonds
+            </h3>
+            
+            {/* Enable Bonds */}
+            <div style={{ marginBottom: '16px' }}>
+              <label style={{ 
+                display: 'flex', 
+                alignItems: 'center', 
+                gap: '8px',
+                fontSize: '14px',
+                cursor: 'pointer'
+              }}>
+                <input
+                  type="checkbox"
+                  checked={settings.bonds?.enabled || false}
+                  onChange={(e) => updateSettings({ 
+                    bonds: { 
+                      ...settings.bonds, 
+                      enabled: e.target.checked 
+                    } 
+                  })}
+                />
+                Show Bonds Between Spheres
+              </label>
+            </div>
+
+            {settings.bonds?.enabled && (
+              <div style={{ marginBottom: '16px' }}>
+                <label style={{ display: 'block', marginBottom: '8px', fontSize: '14px' }}>
+                  Bond Thickness: {((settings.bonds?.thickness || 0.3) * 100).toFixed(0)}%
+                </label>
+                <input
+                  type="range"
+                  min="0.1"
+                  max="0.8"
+                  step="0.05"
+                  value={settings.bonds?.thickness || 0.3}
+                  onChange={(e) => updateSettings({ 
+                    bonds: { 
+                      ...settings.bonds, 
+                      thickness: parseFloat(e.target.value) 
+                    } 
+                  })}
+                  style={{ width: '100%' }}
+                />
+              </div>
+            )}
+          </div>
+
           {/* HDR Environment Section */}
           <div style={{ marginBottom: '24px' }}>
             <h3 style={{ margin: '0 0 16px 0', fontSize: '16px', fontWeight: '600' }}>

@@ -51,6 +51,21 @@ export default function SolutionViewerPage() {
       camera: {
         orthographic: false,
         focalLength: 50
+      },
+      material: {
+        preset: 'basic',
+        roughness: 0.5,
+        clearcoat: 0.0,
+        sheen: 0.3
+      },
+      hdr: {
+        enabled: false,
+        environment: 'studio',
+        intensity: 1.0
+      },
+      bonds: {
+        enabled: true, // Ensure bonds are enabled by default
+        thickness: 0.4 // 40% thickness
       }
     };
   };
