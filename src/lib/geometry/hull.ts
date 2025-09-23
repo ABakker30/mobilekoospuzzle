@@ -24,33 +24,64 @@ export function analyzeConvexHull(points: THREE.Vector3[]): HullAnalysis {
   }
 
   console.log(`🔍 Hull Analysis: Processing ${points.length} points`);
-
-  // Convert THREE.Vector3 to array format for convex-hull library
-  const pointsArray = points.map(p => [p.x, p.y, p.z]);
   
-  // Calculate convex hull faces
-  const hullFaces = convexHull(pointsArray);
+  const hullFaces = convexHull(points.map(p => [p.x, p.y, p.z]));
+  
   console.log(`🔍 Hull Analysis: Found ${hullFaces.length} faces`);
 
-  // Convert hull faces to our HullFace format with enhanced debugging
+  // Convert hull faces to our HullFace format with reduced debugging
   const faces: HullFace[] = hullFaces.map((face, faceIndex) => {
     const vertices = face.map(index => points[index]);
     const normal = calculateFaceNormal(vertices);
     const area = calculateFaceArea(vertices);
     const centroid = calculateFaceCentroid(vertices);
     
-    console.log(`🔍 Face ${faceIndex}: ${vertices.length} vertices, area = ${area.toFixed(3)}, normal = (${normal.x.toFixed(3)}, ${normal.y.toFixed(3)}, ${normal.z.toFixed(3)})`);
+    // Disabled verbose face logging for performance
     
     return { vertices, normal, area, centroid };
   });
 
-  // Find the largest face by area with detailed comparison
-  let largestFace = faces[0];
-  console.log(`🔍 Face comparison:`);
-  faces.forEach((face, index) => {
-    console.log(`  Face ${index}: area = ${face.area.toFixed(3)}, normal = (${face.normal.x.toFixed(3)}, ${face.normal.y.toFixed(3)}, ${face.normal.z.toFixed(3)})`);
+  // Merge coplanar faces with same normal (tolerance for floating point comparison)
+  const mergedFaces: HullFace[] = [];
+  const normalTolerance = 0.001;
+  
+  faces.forEach(face => {
+    // Find existing face with same normal
+    const existingFace = mergedFaces.find(existing => 
+      Math.abs(existing.normal.x - face.normal.x) < normalTolerance &&
+      Math.abs(existing.normal.y - face.normal.y) < normalTolerance &&
+      Math.abs(existing.normal.z - face.normal.z) < normalTolerance
+    );
+    
+    if (existingFace) {
+      // Merge with existing face - combine areas and update centroid
+      const totalArea = existingFace.area + face.area;
+      if (totalArea > 0) {
+        existingFace.centroid = new THREE.Vector3(
+          (existingFace.centroid.x * existingFace.area + face.centroid.x * face.area) / totalArea,
+          (existingFace.centroid.y * existingFace.area + face.centroid.y * face.area) / totalArea,
+          (existingFace.centroid.z * existingFace.area + face.centroid.z * face.area) / totalArea
+        );
+        existingFace.area = totalArea;
+        existingFace.vertices = [...existingFace.vertices, ...face.vertices]; // Combine vertices
+      }
+    } else {
+      // New face direction
+      mergedFaces.push({
+        vertices: [...face.vertices],
+        normal: face.normal.clone(),
+        area: face.area,
+        centroid: face.centroid.clone()
+      });
+    }
+  });
+  
+  console.log(`🔍 Hull Analysis: Merged ${faces.length} triangular faces → ${mergedFaces.length} coplanar faces`);
+  
+  // Find the largest merged face by area
+  let largestFace = mergedFaces[0];
+  mergedFaces.forEach((face, index) => {
     if (face.area > largestFace.area) {
-      console.log(`  ↑ New largest face found: Face ${index}`);
       largestFace = face;
     }
   });

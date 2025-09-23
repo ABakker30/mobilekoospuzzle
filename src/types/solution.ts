@@ -50,6 +50,19 @@ export interface SolutionSettings {
     orthographic: boolean;
     focalLength: number;
   };
+  // PBR Material Settings
+  material: {
+    preset: 'basic' | 'gold' | 'stainlessSteel' | 'brushedSteel';
+    roughness: number; // 0.0 to 1.0
+    clearcoat: number; // 0.0 to 1.0
+    sheen: number; // 0.0 to 1.0 (new sheen intensity slider)
+  };
+  // HDR Environment Settings
+  hdr: {
+    enabled: boolean;
+    environment: 'studio' | 'outdoor' | 'sunset';
+    intensity: number; // 0.0 to 3.0
+  };
 }
 
 // Professional color palette for distinct piece visualization
@@ -103,6 +116,17 @@ export function createDefaultSolutionSettings(piecesUsed: Record<string, number>
     camera: {
       orthographic: false,
       focalLength: 50
+    },
+    material: {
+      preset: 'basic',
+      roughness: 0.5,
+      clearcoat: 0.0,
+      sheen: 0.3 // Default subtle sheen
+    },
+    hdr: {
+      enabled: false,
+      environment: 'studio',
+      intensity: 1.0
     }
   };
 }

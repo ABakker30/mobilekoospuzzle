@@ -197,6 +197,55 @@ export default function SolutionSettingsModal({
               ✨ Material Properties
             </h3>
             
+            {/* Material Preset */}
+            <div style={{ marginBottom: '16px' }}>
+              <label style={{ display: 'block', marginBottom: '8px', fontSize: '14px' }}>
+                Material Preset
+              </label>
+              <select
+                value={settings.material?.preset || 'basic'}
+                onChange={(e) => updateSettings({ 
+                  material: { 
+                    ...settings.material, 
+                    preset: e.target.value as 'basic' | 'gold' | 'stainlessSteel' | 'brushedSteel'
+                  } 
+                })}
+                style={{
+                  width: '100%',
+                  padding: '8px',
+                  borderRadius: '4px',
+                  border: '1px solid #ccc',
+                  fontSize: '14px'
+                }}
+              >
+                <option value="basic">Basic Material</option>
+                <option value="gold">Gold (PBR)</option>
+                <option value="stainlessSteel">Stainless Steel (PBR)</option>
+                <option value="brushedSteel">Brushed Steel (PBR)</option>
+              </select>
+            </div>
+
+            {/* Sheen Intensity */}
+            <div style={{ marginBottom: '16px' }}>
+              <label style={{ display: 'block', marginBottom: '8px', fontSize: '14px' }}>
+                Sheen Intensity: {settings.material?.sheen?.toFixed(2) || '0.30'}
+              </label>
+              <input
+                type="range"
+                min="0"
+                max="1"
+                step="0.01"
+                value={settings.material?.sheen || 0.3}
+                onChange={(e) => updateSettings({ 
+                  material: { 
+                    ...settings.material, 
+                    sheen: parseFloat(e.target.value) 
+                  } 
+                })}
+                style={{ width: '100%' }}
+              />
+            </div>
+
             {/* Metalness */}
             <div style={{ marginBottom: '16px' }}>
               <label style={{ display: 'block', marginBottom: '8px', fontSize: '14px' }}>
@@ -244,6 +293,88 @@ export default function SolutionSettingsModal({
                 style={{ width: '100%' }}
               />
             </div>
+          </div>
+
+          {/* HDR Environment Section */}
+          <div style={{ marginBottom: '24px' }}>
+            <h3 style={{ margin: '0 0 16px 0', fontSize: '16px', fontWeight: '600' }}>
+              🌟 HDR Environment
+            </h3>
+            
+            {/* Enable HDR */}
+            <div style={{ marginBottom: '16px' }}>
+              <label style={{ 
+                display: 'flex', 
+                alignItems: 'center', 
+                gap: '8px',
+                fontSize: '14px',
+                cursor: 'pointer'
+              }}>
+                <input
+                  type="checkbox"
+                  checked={settings.hdr?.enabled || false}
+                  onChange={(e) => updateSettings({ 
+                    hdr: { 
+                      ...settings.hdr, 
+                      enabled: e.target.checked 
+                    } 
+                  })}
+                />
+                Use HDR Environment
+              </label>
+            </div>
+
+            {settings.hdr?.enabled && (
+              <>
+                {/* HDR Environment Selection */}
+                <div style={{ marginBottom: '16px' }}>
+                  <label style={{ display: 'block', marginBottom: '8px', fontSize: '14px' }}>
+                    Environment
+                  </label>
+                  <select
+                    value={settings.hdr?.environment || 'studio'}
+                    onChange={(e) => updateSettings({ 
+                      hdr: { 
+                        ...settings.hdr, 
+                        environment: e.target.value as 'studio' | 'outdoor' | 'sunset'
+                      } 
+                    })}
+                    style={{
+                      width: '100%',
+                      padding: '8px',
+                      borderRadius: '4px',
+                      border: '1px solid #ccc',
+                      fontSize: '14px'
+                    }}
+                  >
+                    <option value="studio">Studio Lighting</option>
+                    <option value="outdoor">Outdoor Natural</option>
+                    <option value="sunset">Golden Hour</option>
+                  </select>
+                </div>
+
+                {/* HDR Intensity */}
+                <div style={{ marginBottom: '16px' }}>
+                  <label style={{ display: 'block', marginBottom: '8px', fontSize: '14px' }}>
+                    HDR Intensity: {settings.hdr?.intensity?.toFixed(1) || '1.0'}
+                  </label>
+                  <input
+                    type="range"
+                    min="0"
+                    max="3"
+                    step="0.1"
+                    value={settings.hdr?.intensity || 1.0}
+                    onChange={(e) => updateSettings({ 
+                      hdr: { 
+                        ...settings.hdr, 
+                        intensity: parseFloat(e.target.value) 
+                      } 
+                    })}
+                    style={{ width: '100%' }}
+                  />
+                </div>
+              </>
+            )}
           </div>
 
           {/* Piece Colors Section */}
@@ -339,6 +470,33 @@ export default function SolutionSettingsModal({
               </div>
             )}
           </div>
+        </div>
+
+        {/* Done Button */}
+        <div style={{
+          padding: '16px 20px',
+          borderTop: '1px solid #e9ecef',
+          display: 'flex',
+          justifyContent: 'flex-end'
+        }}>
+          <button
+            onClick={onClose}
+            style={{
+              backgroundColor: '#007bff',
+              color: 'white',
+              border: 'none',
+              borderRadius: '8px',
+              padding: '12px 24px',
+              fontSize: '16px',
+              fontWeight: '600',
+              cursor: 'pointer',
+              transition: 'background-color 0.2s ease'
+            }}
+            onMouseOver={(e) => e.currentTarget.style.backgroundColor = '#0056b3'}
+            onMouseOut={(e) => e.currentTarget.style.backgroundColor = '#007bff'}
+          >
+            Done
+          </button>
         </div>
       </div>
     </div>
