@@ -42,6 +42,42 @@ export default function HomePage() {
         </Link>
         
         <Link 
+          to="/auto-solve" 
+          style={{
+            display: 'block',
+            padding: '1rem 2rem',
+            backgroundColor: '#6f42c1',
+            color: 'white',
+            textDecoration: 'none',
+            borderRadius: '8px',
+            fontSize: '1.1rem',
+            fontWeight: 'bold',
+            width: '100%',
+            boxSizing: 'border-box'
+          }}
+        >
+          Auto Solve
+        </Link>
+        
+        <Link 
+          to="/manual-solve" 
+          style={{
+            display: 'block',
+            padding: '1rem 2rem',
+            backgroundColor: '#fd7e14',
+            color: 'white',
+            textDecoration: 'none',
+            borderRadius: '8px',
+            fontSize: '1.1rem',
+            fontWeight: 'bold',
+            width: '100%',
+            boxSizing: 'border-box'
+          }}
+        >
+          Manual Solve
+        </Link>
+        
+        <Link 
           to="/view-solution" 
           style={{
             display: 'block',

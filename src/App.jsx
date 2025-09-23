@@ -1,6 +1,8 @@
 import { HashRouter, Routes, Route } from 'react-router-dom';
 import HomePage from './views/HomePage';
 import PuzzleShapePage from './views/PuzzleShapePage';
+import AutoSolvePage from './views/AutoSolvePage';
+import ManualSolvePage from './views/ManualSolvePage';
 import ViewSolutionPage from './views/ViewSolutionPage';
 
 export default function App() {
@@ -17,6 +19,8 @@ export default function App() {
         <Routes>
           <Route path="/" element={<HomePage />} />
           <Route path="/puzzle-shape" element={<PuzzleShapePage />} />
+          <Route path="/auto-solve" element={<AutoSolvePage />} />
+          <Route path="/manual-solve" element={<ManualSolvePage />} />
           <Route path="/view-solution" element={<ViewSolutionPage />} />
         </Routes>
       </div>
