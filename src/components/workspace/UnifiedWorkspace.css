@@ -86,24 +86,56 @@
   z-index: 5;
 }
 
-/* Mobile Responsive */
+/* Debug Indicator */
+.debug-indicator {
+  position: fixed;
+  bottom: 1rem;
+  right: 1rem;
+  background: rgba(0, 0, 0, 0.8);
+  color: white;
+  padding: 0.5rem 0.75rem;
+  border-radius: 6px;
+  font-size: 0.75rem;
+  font-family: 'Consolas', 'Monaco', 'Courier New', monospace;
+  z-index: 1000;
+  opacity: 0.7;
+  pointer-events: none;
+  transition: opacity 0.3s ease;
+}
+
+.debug-indicator:hover {
+  opacity: 1;
+}
+
+/* Mobile-First Responsive Design */
+/* Base styles are mobile-first, then enhanced for larger screens */
+
+/* Enhanced Mobile Touch Targets */
 @media (max-width: 768px) {
   .workspace-header {
     flex-direction: column;
     gap: 1rem;
     padding: 1rem;
+    /* Ensure header doesn't interfere with mobile browser chrome */
+    padding-top: max(1rem, env(safe-area-inset-top));
   }
   
   .workspace-modes {
     width: 100%;
     justify-content: space-between;
+    gap: 0.75rem; /* Increased touch spacing */
   }
   
   .mode-button {
     flex: 1;
     justify-content: center;
-    padding: 0.5rem;
-    font-size: 0.75rem;
+    /* Minimum 44px touch target (iOS/Android guidelines) */
+    min-height: 44px;
+    padding: 0.75rem 0.5rem;
+    font-size: 0.875rem;
+    /* Enhanced touch feedback */
+    -webkit-tap-highlight-color: rgba(0,0,0,0.1);
+    touch-action: manipulation;
   }
   
   .mode-name {
@@ -111,13 +143,31 @@
   }
   
   .mode-icon {
-    font-size: 1.5rem;
+    font-size: 1.75rem; /* Larger for better visibility */
+  }
+  
+  /* Mobile-optimized workspace main area */
+  .workspace-main {
+    /* Account for mobile browser chrome and safe areas */
+    height: calc(100vh - var(--header-height, 140px) - env(safe-area-inset-bottom));
+  }
+  
+  .workspace-viewer {
+    /* Ensure 3D viewport uses full available space */
+    touch-action: pan-x pan-y; /* Allow native scrolling but prevent zoom */
+  }
+  
+  .workspace-toolbar {
+    /* Ensure toolbar is accessible above mobile keyboard */
+    padding-bottom: max(1rem, env(safe-area-inset-bottom));
   }
 }
 
+/* Small Mobile Devices (iPhone SE, etc.) */
 @media (max-width: 480px) {
   .workspace-header {
     padding: 0.75rem;
+    padding-top: max(0.75rem, env(safe-area-inset-top));
   }
   
   .workspace-brand h1 {
@@ -129,8 +179,57 @@
   }
   
   .mode-button {
-    padding: 0.5rem 0.25rem;
+    /* Maintain minimum touch target even on small screens */
+    min-height: 44px;
+    padding: 0.75rem 0.25rem;
     border-width: 1px;
+  }
+  
+  .mode-icon {
+    font-size: 1.5rem;
+  }
+  
+  /* Optimize debug indicator for small screens */
+  .debug-indicator {
+    bottom: max(0.5rem, env(safe-area-inset-bottom));
+    right: 0.5rem;
+    font-size: 0.625rem;
+    padding: 0.375rem 0.5rem;
+  }
+}
+
+/* Landscape Mobile Optimization */
+@media (max-width: 768px) and (orientation: landscape) {
+  .workspace-header {
+    flex-direction: row;
+    padding: 0.5rem 1rem;
+    gap: 2rem;
+  }
+  
+  .workspace-modes {
+    width: auto;
+    gap: 0.5rem;
+  }
+  
+  .mode-button {
+    min-width: 60px;
+    padding: 0.5rem;
+  }
+  
+  .workspace-main {
+    height: calc(100vh - 80px - env(safe-area-inset-bottom));
+  }
+}
+
+/* Tablet Optimization */
+@media (min-width: 769px) and (max-width: 1024px) {
+  .mode-button {
+    padding: 0.75rem 1.25rem;
+    font-size: 1rem;
+  }
+  
+  .mode-name {
+    display: inline;
   }
   
   .mode-icon {
