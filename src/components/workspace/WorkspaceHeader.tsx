@@ -10,12 +10,12 @@ export const WorkspaceHeader: React.FC = () => {
   const { currentMode } = state;
   const allModes = getAllModes();
   const [showUserMenu, setShowUserMenu] = useState(false);
+  const [showSettings, setShowSettings] = useState(false);
 
   return (
     <header className="workspace-header">
       <div className="workspace-brand">
         <h1>Koos Puzzle V2</h1>
-        <span className="workspace-subtitle">Unified 3D Workspace</span>
       </div>
       
       <nav className="workspace-modes">
@@ -36,6 +36,16 @@ export const WorkspaceHeader: React.FC = () => {
           </button>
         ))}
       </nav>
+
+      <div className="workspace-actions">
+        <button 
+          className="settings-button"
+          onClick={() => setShowSettings(!showSettings)}
+          title="Settings"
+        >
+          ⚙️
+        </button>
+      </div>
 
       <div className="workspace-user">
         {user ? (

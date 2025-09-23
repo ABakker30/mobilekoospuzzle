@@ -73,154 +73,79 @@ export const PuzzleShapeToolbar: React.FC<ModeToolbarProps> = ({
     alert(`Loaded ${coordinates.length} coordinates from library shape`);
   };
 
-  const handleLoadShape = async () => {
-    try {
-      // Use the File System Access API or fallback to input element
-      const fileHandle = await (window as any).showOpenFilePicker({
-        types: [{
-          description: 'Container files',
-          accept: { 'application/json': ['.json'] }
-        }]
-      });
-      
-      const file = await fileHandle[0].getFile();
-      const text = await file.text();
-      const container = JSON.parse(text);
-      
-      // Convert container coordinates to FCCCoord format
-      if (container.coordinates && Array.isArray(container.coordinates)) {
-        const coordinates = container.coordinates.map((coord: any) => ({
-          i: coord.i || 0,
-          j: coord.j || 0, 
-          k: coord.k || 0,
-          x: coord.x || 0,
-          y: coord.y || 0,
-          z: coord.z || 0
-        }));
-        
-        // Update workspace coordinates directly
-        updateCoordinates(coordinates);
-        alert(`Loaded ${coordinates.length} coordinates from container file`);
-      }
-    } catch (error) {
-      // Fallback for browsers without File System Access API
-      const input = document.createElement('input');
-      input.type = 'file';
-      input.accept = '.json';
-      input.onchange = async (e) => {
-        const file = (e.target as HTMLInputElement).files?.[0];
-        if (file) {
-          const text = await file.text();
-          try {
-            const container = JSON.parse(text);
-            if (container.coordinates && Array.isArray(container.coordinates)) {
-              const coordinates = container.coordinates.map((coord: any) => ({
-                i: coord.i || 0,
-                j: coord.j || 0, 
-                k: coord.k || 0,
-                x: coord.x || 0,
-                y: coord.y || 0,
-                z: coord.z || 0
-              }));
-              
-              updateCoordinates(coordinates);
-              alert(`Loaded ${coordinates.length} coordinates from container file`);
-            }
-          } catch (parseError) {
-            alert('Invalid container file format');
-          }
-        }
-      };
-      input.click();
-    }
-  };
-
-  const handleBrightnessChange = (brightness: number) => {
-    onSettingsChange({ brightness });
-  };
 
   return (
     <div style={{ 
-      padding: '1rem', 
+      padding: '0.75rem', 
       background: '#f8f9fa', 
       borderBottom: '1px solid #dee2e6',
       display: 'flex',
-      alignItems: 'center',
-      gap: '1rem',
-      flexWrap: 'wrap'
+      flexDirection: 'column',
+      gap: '0.75rem'
     }}>
-      <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
-        <span style={{ fontSize: '1.5rem' }}>🧩</span>
-        <div>
-          <h3 style={{ margin: 0, color: '#007bff', fontSize: '1rem' }}>Puzzle Shape Mode</h3>
-          <p style={{ margin: 0, fontSize: '0.75rem', color: '#6c757d' }}>
-            Create and edit 3D puzzle shapes
-          </p>
-        </div>
-      </div>
-
-      <div style={{ display: 'flex', alignItems: 'center', gap: '1rem', marginLeft: 'auto' }}>
-        <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
-          <label style={{ fontSize: '0.875rem', color: '#495057' }}>Brightness:</label>
-          <input
-            type="range"
-            min="0.1"
-            max="2.5"
-            step="0.1"
-            value={settings.brightness}
-            onChange={(e) => handleBrightnessChange(parseFloat(e.target.value))}
-            style={{ width: '100px' }}
-          />
-          <span style={{ fontSize: '0.75rem', color: '#6c757d', minWidth: '2rem' }}>
-            {settings.brightness.toFixed(1)}
-          </span>
-        </div>
-
+      {/* Mode-specific controls */}
+      <div style={{ 
+        display: 'flex', 
+        justifyContent: 'center',
+        gap: '0.75rem',
+        flexWrap: 'wrap'
+      }}>
         <button
           onClick={handleBrowseLibrary}
           style={{
-            padding: '0.5rem 1rem',
+            padding: '0.75rem 1.25rem',
             background: '#17a2b8',
             color: 'white',
             border: 'none',
-            borderRadius: '6px',
+            borderRadius: '8px',
             cursor: 'pointer',
-            fontSize: '0.875rem'
+            fontSize: '0.875rem',
+            fontWeight: '500',
+            display: 'flex',
+            alignItems: 'center',
+            gap: '0.5rem'
           }}
         >
-          📚 Browse Library
-        </button>
-
-        <button
-          onClick={handleLoadShape}
-          style={{
-            padding: '0.5rem 1rem',
-            background: '#007bff',
-            color: 'white',
-            border: 'none',
-            borderRadius: '6px',
-            cursor: 'pointer',
-            fontSize: '0.875rem'
-          }}
-        >
-          📁 Load File
+          📚 Browse
         </button>
 
         <button
           onClick={handleSaveShape}
           disabled={isLoading}
           style={{
-            padding: '0.5rem 1rem',
+            padding: '0.75rem 1.25rem',
             background: user ? '#28a745' : '#6c757d',
             color: 'white',
             border: 'none',
-            borderRadius: '6px',
+            borderRadius: '8px',
             cursor: user ? 'pointer' : 'not-allowed',
             fontSize: '0.875rem',
-            opacity: isLoading ? 0.6 : 1
+            fontWeight: '500',
+            opacity: isLoading ? 0.6 : 1,
+            display: 'flex',
+            alignItems: 'center',
+            gap: '0.5rem'
           }}
         >
-          {isLoading ? 'Saving...' : user ? '💾 Save Shape' : '🔒 Sign in to Save'}
+          {isLoading ? 'Saving...' : user ? '💾 Save' : '🔒 Sign in'}
+        </button>
+
+        <button
+          style={{
+            padding: '0.75rem 1.25rem',
+            background: '#007bff',
+            color: 'white',
+            border: 'none',
+            borderRadius: '8px',
+            cursor: 'pointer',
+            fontSize: '0.875rem',
+            fontWeight: '500',
+            display: 'flex',
+            alignItems: 'center',
+            gap: '0.5rem'
+          }}
+        >
+          ✏️ Edit
         </button>
       </div>
 
