@@ -1,5 +1,5 @@
-import React, { createContext, useContext, useReducer, useCallback } from 'react';
-import { WorkspaceState, WorkspaceSettings, WorkspaceModeId, defaultWorkspaceSettings } from '../../types/workspace';
+import React, { createContext, useContext, useReducer, useCallback, useEffect } from 'react';
+import { WorkspaceState, WorkspaceSettings, WorkspaceModeId, UserProfile, SyncStatus, defaultWorkspaceSettings } from '../../types/workspace';
 import { FCCCoord } from '../../lib/coords/fcc';
 
 interface WorkspaceContextType {
@@ -8,6 +8,10 @@ interface WorkspaceContextType {
   updateSettings: (settings: Partial<WorkspaceSettings>) => void;
   updateCoordinates: (coordinates: FCCCoord[]) => void;
   updateModeState: (mode: WorkspaceModeId, state: Record<string, any>) => void;
+  // User management
+  setUser: (user: UserProfile | null) => void;
+  setSyncStatus: (status: SyncStatus) => void;
+  setOnlineStatus: (isOnline: boolean) => void;
 }
 
 const WorkspaceContext = createContext<WorkspaceContextType | null>(null);
@@ -24,7 +28,10 @@ type WorkspaceAction =
   | { type: 'SET_MODE'; mode: WorkspaceModeId }
   | { type: 'UPDATE_SETTINGS'; settings: Partial<WorkspaceSettings> }
   | { type: 'UPDATE_COORDINATES'; coordinates: FCCCoord[] }
-  | { type: 'UPDATE_MODE_STATE'; mode: WorkspaceModeId; state: Record<string, any> };
+  | { type: 'UPDATE_MODE_STATE'; mode: WorkspaceModeId; state: Record<string, any> }
+  | { type: 'SET_USER'; user: UserProfile | null }
+  | { type: 'SET_SYNC_STATUS'; status: SyncStatus }
+  | { type: 'SET_ONLINE_STATUS'; isOnline: boolean };
 
 const workspaceReducer = (state: WorkspaceState, action: WorkspaceAction): WorkspaceState => {
   switch (action.type) {
@@ -52,6 +59,17 @@ const workspaceReducer = (state: WorkspaceState, action: WorkspaceAction): Works
           [action.mode]: { ...state.modeState[action.mode], ...action.state }
         }
       };
+    case 'SET_USER':
+      return { 
+        ...state, 
+        user: action.user, 
+        isAuthenticated: action.user !== null,
+        syncStatus: action.user ? 'synced' : 'offline'
+      };
+    case 'SET_SYNC_STATUS':
+      return { ...state, syncStatus: action.status };
+    case 'SET_ONLINE_STATUS':
+      return { ...state, isOnline: action.isOnline };
     default:
       return state;
   }
@@ -61,6 +79,10 @@ const initialWorkspaceState: WorkspaceState = {
   currentMode: 'shape',
   settings: defaultWorkspaceSettings,
   coordinates: [],
+  user: null,
+  isAuthenticated: false,
+  isOnline: navigator.onLine,
+  syncStatus: 'offline',
   modeState: {
     'shape': {},
     'auto-solve': {},
@@ -88,13 +110,42 @@ export const WorkspaceProvider: React.FC<{ children: React.ReactNode }> = ({ chi
     dispatch({ type: 'UPDATE_MODE_STATE', mode, state });
   }, []);
 
+  const setUser = useCallback((user: UserProfile | null) => {
+    dispatch({ type: 'SET_USER', user });
+  }, []);
+
+  const setSyncStatus = useCallback((status: SyncStatus) => {
+    dispatch({ type: 'SET_SYNC_STATUS', status });
+  }, []);
+
+  const setOnlineStatus = useCallback((isOnline: boolean) => {
+    dispatch({ type: 'SET_ONLINE_STATUS', isOnline });
+  }, []);
+
+  // Monitor online/offline status
+  useEffect(() => {
+    const handleOnline = () => setOnlineStatus(true);
+    const handleOffline = () => setOnlineStatus(false);
+
+    window.addEventListener('online', handleOnline);
+    window.addEventListener('offline', handleOffline);
+
+    return () => {
+      window.removeEventListener('online', handleOnline);
+      window.removeEventListener('offline', handleOffline);
+    };
+  }, [setOnlineStatus]);
+
   return (
     <WorkspaceContext.Provider value={{
       state,
       setMode,
       updateSettings,
       updateCoordinates,
-      updateModeState
+      updateModeState,
+      setUser,
+      setSyncStatus,
+      setOnlineStatus
     }}>
       {children}
     </WorkspaceContext.Provider>

@@ -2,6 +2,35 @@ import { FCCCoord } from '../lib/coords/fcc';
 
 export type WorkspaceModeId = 'shape' | 'auto-solve' | 'manual-solve' | 'view-solution';
 
+// User & Authentication Types
+export interface UserProfile {
+  uid: string;
+  email?: string;
+  displayName: string;
+  avatar?: string;
+  createdAt: number; // timestamp
+  stats: {
+    shapesCreated: number;
+    solutionsFound: number;
+    puzzlesSolved: number;
+    communityRank: number;
+  };
+  preferences: {
+    defaultMaterial: string;
+    defaultCamera: {
+      orthographic: boolean;
+      focalLength: number;
+    };
+    notifications: {
+      newSolutions: boolean;
+      communityUpdates: boolean;
+      achievements: boolean;
+    };
+  };
+}
+
+export type SyncStatus = 'synced' | 'syncing' | 'offline' | 'error';
+
 export interface WorkspaceSettings {
   // 3D Viewer Settings (from your excellent V1)
   brightness: number;
@@ -34,6 +63,12 @@ export interface WorkspaceState {
   
   // Shape data (from V1)
   coordinates: FCCCoord[];
+  
+  // User & Authentication State
+  user: UserProfile | null;
+  isAuthenticated: boolean;
+  isOnline: boolean;
+  syncStatus: SyncStatus;
   
   // Mode-specific state (for each mode's unique needs)
   modeState: {

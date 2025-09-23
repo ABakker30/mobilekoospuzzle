@@ -11,10 +11,11 @@
   display: flex;
   justify-content: space-between;
   align-items: center;
-  padding: 1rem 2rem;
+  padding: 1.5rem 2rem;
   background: white;
   border-bottom: 1px solid #e9ecef;
   box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+  position: relative;
   z-index: 10;
 }
 
@@ -234,5 +235,157 @@
   
   .mode-icon {
     font-size: 1.25rem;
+  }
+}
+
+/* User Interface Styles */
+.workspace-user {
+  position: relative;
+}
+
+.user-menu {
+  position: relative;
+}
+
+.user-button {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  padding: 0.5rem 1rem;
+  background: white;
+  border: 1px solid #dee2e6;
+  border-radius: 8px;
+  cursor: pointer;
+  transition: all 0.2s ease;
+  font-size: 0.875rem;
+}
+
+.user-button:hover {
+  background: #f8f9fa;
+  border-color: #007bff;
+}
+
+.user-avatar {
+  width: 32px;
+  height: 32px;
+  border-radius: 50%;
+  object-fit: cover;
+}
+
+.user-avatar-placeholder {
+  width: 32px;
+  height: 32px;
+  border-radius: 50%;
+  background: #007bff;
+  color: white;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-weight: 600;
+  font-size: 0.875rem;
+}
+
+.user-name {
+  font-weight: 500;
+  color: #212529;
+}
+
+.user-dropdown {
+  position: absolute;
+  top: 100%;
+  right: 0;
+  margin-top: 0.5rem;
+  background: white;
+  border: 1px solid #dee2e6;
+  border-radius: 8px;
+  box-shadow: 0 4px 12px rgba(0,0,0,0.15);
+  padding: 1rem;
+  min-width: 200px;
+  z-index: 1000;
+}
+
+.user-info {
+  margin-bottom: 1rem;
+  padding-bottom: 1rem;
+  border-bottom: 1px solid #e9ecef;
+}
+
+.user-stats {
+  display: flex;
+  flex-direction: column;
+  gap: 0.25rem;
+}
+
+.user-stats span {
+  font-size: 0.75rem;
+  color: #6c757d;
+}
+
+.user-dropdown button {
+  width: 100%;
+  padding: 0.5rem;
+  background: #dc3545;
+  color: white;
+  border: none;
+  border-radius: 6px;
+  cursor: pointer;
+  font-size: 0.875rem;
+  transition: background 0.2s ease;
+}
+
+.user-dropdown button:hover:not(:disabled) {
+  background: #c82333;
+}
+
+.user-dropdown button:disabled {
+  opacity: 0.6;
+  cursor: not-allowed;
+}
+
+.auth-buttons {
+  display: flex;
+  gap: 0.5rem;
+}
+
+.sign-in-button {
+  padding: 0.5rem 1rem;
+  background: #007bff;
+  color: white;
+  border: none;
+  border-radius: 6px;
+  cursor: pointer;
+  font-size: 0.875rem;
+  font-weight: 500;
+  transition: background 0.2s ease;
+}
+
+.sign-in-button:hover:not(:disabled) {
+  background: #0056b3;
+}
+
+.sign-in-button:disabled {
+  opacity: 0.6;
+  cursor: not-allowed;
+}
+
+/* Mobile User Interface */
+@media (max-width: 768px) {
+  .user-name {
+    display: none;
+  }
+  
+  .user-button {
+    padding: 0.5rem;
+  }
+  
+  .user-dropdown {
+    right: -1rem;
+    left: -1rem;
+    width: auto;
+  }
+  
+  .sign-in-button {
+    padding: 0.5rem 0.75rem;
+    font-size: 0.75rem;
   }
 }

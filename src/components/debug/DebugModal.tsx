@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { useWorkspace } from '../workspace/WorkspaceProvider';
 import { getAllModes } from '../workspace/modeRegistry';
+import { UserProfile } from '../../types/workspace';
 import './DebugModal.css';
 
 interface DebugModalProps {
@@ -9,7 +10,7 @@ interface DebugModalProps {
 }
 
 export const DebugModal: React.FC<DebugModalProps> = ({ isOpen, onClose }) => {
-  const { state, setMode, updateSettings, updateCoordinates } = useWorkspace();
+  const { state, setMode, updateSettings, updateCoordinates, setUser, setSyncStatus } = useWorkspace();
   const [activeTab, setActiveTab] = useState<'state' | 'actions' | 'performance'>('state');
   const allModes = getAllModes();
 
@@ -21,10 +22,10 @@ export const DebugModal: React.FC<DebugModalProps> = ({ isOpen, onClose }) => {
 
   const handleAddTestCoordinates = () => {
     const testCoords = [
-      { i: 0, j: 0, k: 0 },
-      { i: 1, j: 0, k: 0 },
-      { i: 0, j: 1, k: 0 },
-      { i: 0, j: 0, k: 1 }
+      { i: 0, j: 0, k: 0, x: 0, y: 0, z: 0 },
+      { i: 1, j: 0, k: 0, x: 1, y: 0, z: 0 },
+      { i: 0, j: 1, k: 0, x: 0, y: 1, z: 0 },
+      { i: 0, j: 0, k: 1, x: 0, y: 0, z: 1 }
     ];
     updateCoordinates(testCoords);
   };
@@ -35,6 +36,43 @@ export const DebugModal: React.FC<DebugModalProps> = ({ isOpen, onClose }) => {
 
   const handleUpdateBrightness = (brightness: number) => {
     updateSettings({ brightness });
+  };
+
+  const handleLoginTestUser = () => {
+    const testUser: UserProfile = {
+      uid: 'test-user-123',
+      displayName: 'Test User',
+      email: 'test@example.com',
+      avatar: 'https://via.placeholder.com/40',
+      createdAt: Date.now(),
+      stats: {
+        shapesCreated: 5,
+        solutionsFound: 12,
+        puzzlesSolved: 8,
+        communityRank: 42
+      },
+      preferences: {
+        defaultMaterial: 'pbr-gold',
+        defaultCamera: {
+          orthographic: false,
+          focalLength: 50
+        },
+        notifications: {
+          newSolutions: true,
+          communityUpdates: false,
+          achievements: true
+        }
+      }
+    };
+    setUser(testUser);
+  };
+
+  const handleLogout = () => {
+    setUser(null);
+  };
+
+  const handleChangeSyncStatus = (status: 'synced' | 'syncing' | 'offline' | 'error') => {
+    setSyncStatus(status);
   };
 
   return (
@@ -75,6 +113,28 @@ export const DebugModal: React.FC<DebugModalProps> = ({ isOpen, onClose }) => {
                     {getAllModes().find(m => m.id === state.currentMode)?.icon}
                   </span>
                   <span>{getAllModes().find(m => m.id === state.currentMode)?.displayName}</span>
+                </div>
+              </div>
+
+              <div className="debug-section">
+                <h4>User & Authentication</h4>
+                <div className="debug-settings">
+                  <div className="debug-setting">
+                    <span>User:</span>
+                    <span>{state.user ? state.user.displayName : 'Anonymous'}</span>
+                  </div>
+                  <div className="debug-setting">
+                    <span>Authenticated:</span>
+                    <span>{state.isAuthenticated ? '✅ Yes' : '❌ No'}</span>
+                  </div>
+                  <div className="debug-setting">
+                    <span>Online:</span>
+                    <span>{state.isOnline ? '🟢 Online' : '🔴 Offline'}</span>
+                  </div>
+                  <div className="debug-setting">
+                    <span>Sync Status:</span>
+                    <span>{state.syncStatus}</span>
+                  </div>
                 </div>
               </div>
 
@@ -170,6 +230,36 @@ export const DebugModal: React.FC<DebugModalProps> = ({ isOpen, onClose }) => {
                   </label>
                 </div>
               </div>
+
+              <div className="debug-section">
+                <h4>User Testing</h4>
+                <div className="debug-action-buttons">
+                  <button onClick={handleLoginTestUser}>
+                    Login Test User
+                  </button>
+                  <button onClick={handleLogout}>
+                    Logout
+                  </button>
+                </div>
+              </div>
+
+              <div className="debug-section">
+                <h4>Sync Status Testing</h4>
+                <div className="debug-action-buttons">
+                  <button onClick={() => handleChangeSyncStatus('synced')}>
+                    Set Synced
+                  </button>
+                  <button onClick={() => handleChangeSyncStatus('syncing')}>
+                    Set Syncing
+                  </button>
+                  <button onClick={() => handleChangeSyncStatus('offline')}>
+                    Set Offline
+                  </button>
+                  <button onClick={() => handleChangeSyncStatus('error')}>
+                    Set Error
+                  </button>
+                </div>
+              </div>
             </div>
           )}
 
@@ -208,7 +298,7 @@ export const DebugModal: React.FC<DebugModalProps> = ({ isOpen, onClose }) => {
                 <div className="debug-build-info">
                   <div className="debug-metric">
                     <span>Environment:</span>
-                    <span>{import.meta.env.MODE}</span>
+                    <span>{process.env.NODE_ENV || 'development'}</span>
                   </div>
                   <div className="debug-metric">
                     <span>Version:</span>
