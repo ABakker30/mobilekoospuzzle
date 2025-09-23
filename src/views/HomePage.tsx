@@ -24,6 +24,37 @@ export default function HomePage() {
         gap: '1rem' 
       }}>
         <Link 
+          to="/workspace" 
+          style={{
+            display: 'block',
+            padding: '1.5rem 2rem',
+            background: 'linear-gradient(135deg, #007bff, #6f42c1)',
+            color: 'white',
+            textDecoration: 'none',
+            borderRadius: '12px',
+            fontSize: '1.2rem',
+            fontWeight: 'bold',
+            width: '100%',
+            boxSizing: 'border-box',
+            boxShadow: '0 4px 12px rgba(0,0,0,0.15)',
+            border: '2px solid transparent'
+          }}
+        >
+          🚀 Unified Workspace (V2)
+        </Link>
+        
+        <div style={{ 
+          margin: '1rem 0', 
+          padding: '0.5rem', 
+          fontSize: '0.875rem', 
+          color: '#6c757d',
+          borderTop: '1px solid #e9ecef',
+          paddingTop: '1rem'
+        }}>
+          V1 Individual Pages:
+        </div>
+        
+        <Link 
           to="/puzzle-shape" 
           style={{
             display: 'block',

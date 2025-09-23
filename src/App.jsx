@@ -4,6 +4,7 @@ import PuzzleShapePage from './views/PuzzleShapePage';
 import AutoSolvePage from './views/AutoSolvePage';
 import ManualSolvePage from './views/ManualSolvePage';
 import ViewSolutionPage from './views/ViewSolutionPage';
+import { UnifiedWorkspace } from './components/workspace/UnifiedWorkspace';
 
 export default function App() {
   return (
@@ -18,6 +19,8 @@ export default function App() {
       }}>
         <Routes>
           <Route path="/" element={<HomePage />} />
+          <Route path="/workspace" element={<UnifiedWorkspace />} />
+          {/* Keep existing V1 routes for compatibility */}
           <Route path="/puzzle-shape" element={<PuzzleShapePage />} />
           <Route path="/auto-solve" element={<AutoSolvePage />} />
           <Route path="/manual-solve" element={<ManualSolvePage />} />
