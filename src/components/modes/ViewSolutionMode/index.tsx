@@ -82,6 +82,12 @@ export const ViewSolutionViewer: React.FC<ModeViewerProps> = ({
         const settings = loadSolutionSettings(solutionData);
         setSolutionSettings(settings);
         
+        console.log('🎯 ViewSolutionMode: Solution state updated:', {
+          solution: solutionData,
+          settings: settings,
+          name: file.name
+        });
+        
         console.log('✅ Solution loaded in ViewSolutionMode:', {
           name: file.name,
           pieces: Object.keys(solutionData.piecesUsed).length,
@@ -255,6 +261,26 @@ export const ViewSolutionViewer: React.FC<ModeViewerProps> = ({
         solution={solution}
         settings={solutionSettings}
       />
+      
+      {/* Debug info */}
+      {process.env.NODE_ENV === 'development' && (
+        <div style={{
+          position: 'absolute',
+          bottom: '10px',
+          left: '10px',
+          background: 'rgba(0,0,0,0.8)',
+          color: 'white',
+          padding: '8px',
+          borderRadius: '4px',
+          fontSize: '10px',
+          zIndex: 1000
+        }}>
+          <div>Solution: {solution ? '✅' : '❌'}</div>
+          <div>Settings: {solutionSettings ? '✅' : '❌'}</div>
+          <div>Pieces: {solution ? Object.keys(solution.piecesUsed).length : 0}</div>
+          <div>Placements: {solution ? solution.placements.length : 0}</div>
+        </div>
+      )}
     </div>
   );
 };

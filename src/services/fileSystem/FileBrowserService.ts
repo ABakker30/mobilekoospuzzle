@@ -150,32 +150,61 @@ export class FileBrowserService {
     try {
       console.log('🔍 Loading solutions from GitHub...');
       
-      // Start with just one file to test
-      const testFile = 'Shape_2.json';
-      const url = `${this.baseUrl}/solutions/${testFile}`;
-      
-      console.log(`📥 Testing solution fetch: ${url}`);
-      const response = await fetch(url);
-      
-      if (!response.ok) {
-        console.error(`❌ Failed to fetch ${testFile}: ${response.status} ${response.statusText}`);
-        return [];
+      // Load multiple solution files
+      const solutionFiles = [
+        'Shape_2.json',
+        'Shape_3.json',
+        'Shape_4.json',
+        'Shape_5.json',
+        'Shape_6.json',
+        'Shape_7.json',
+        'Shape_8.json',
+        'Shape_9.json',
+        'Shape_10.result1.json',
+        'Shape_11.json',
+        'Shape_12.json',
+        '16_cell_container.fcc_16cell_dlx_corrected_001.json',
+        '16_cell_container.fcc_16cell_dlx_corrected_002.json',
+        '16_cell_container.fcc_16cell_dlx_corrected_003.json'
+      ];
+
+      const solutions: UnifiedFile[] = [];
+
+      for (const filename of solutionFiles) {
+        try {
+          const url = `${this.baseUrl}/solutions/${filename}`;
+          console.log(`📥 Fetching solution: ${url}`);
+          
+          const response = await fetch(url);
+          
+          if (response.ok) {
+            const content = await response.json();
+            
+            // Basic validation - check if it has required solution properties
+            if (content && content.version && content.piecesUsed && content.placements) {
+              solutions.push({
+                name: filename,
+                path: url,
+                type: FileType.SOLUTION,
+                size: JSON.stringify(content).length,
+                lastModified: new Date(),
+                content: content
+              });
+              
+              console.log(`✅ Solution loaded: ${filename} (${Object.keys(content.piecesUsed).length} pieces, ${content.placements.length} placements)`);
+            } else {
+              console.warn(`⚠️ Invalid solution format: ${filename}`);
+            }
+          } else {
+            console.warn(`⚠️ Solution not found: ${filename} (${response.status})`);
+          }
+        } catch (error) {
+          console.warn(`⚠️ Failed to load solution ${filename}:`, error);
+        }
       }
-      
-      const content = await response.json();
-      console.log(`✅ Solution content loaded:`, content);
-      
-      const solution: UnifiedFile = {
-        name: testFile,
-        path: url,
-        type: FileType.SOLUTION,
-        size: JSON.stringify(content).length,
-        lastModified: new Date(),
-        content: content
-      };
-      
-      console.log(`📁 Solution loaded successfully: ${testFile}`);
-      return [solution];
+
+      console.log(`📁 Solutions loaded: ${solutions.length} files`);
+      return solutions;
       
     } catch (error) {
       console.error('❌ Failed to load solutions:', error);
