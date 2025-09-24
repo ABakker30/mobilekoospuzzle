@@ -1,7 +1,6 @@
-import React, { useState, useRef } from 'react';
-import { ModeToolbarProps, ModeViewerProps } from '../../../types/workspace';
+import React, { useRef, useEffect } from 'react';
 import ShapeEditor3D, { ShapeEditor3DRef } from '../../shape/ShapeEditor3D';
-import { useAuth } from '../../../hooks/useAuth';
+import { FileOrientationService } from '../../../services/fileSystem';
 import { useWorkspace } from '../../workspace/WorkspaceProvider';
 import { shapeService } from '../../../services/content/ShapeService';
 import { LibraryBrowser } from '../../library/LibraryBrowser';
@@ -198,6 +197,31 @@ export const PuzzleShapeViewer: React.FC<ModeViewerProps> = ({
   const handleModeStateChange = (updates: any) => {
     onModeStateChange({ ...modeState, ...updates });
   };
+
+  // Handle automatic orientation when file is loaded
+  useEffect(() => {
+    if (modeState.shouldAutoOrient && modeState.pendingOrientation && editorRef.current && coordinates.length > 0) {
+      console.log(`🎯 PuzzleShapeMode: Applying automatic orientation`);
+      
+      setTimeout(async () => {
+        try {
+          if (editorRef.current && editorRef.current.applyCenterOrientTransform) {
+            const orientationMatrix = FileOrientationService.arrayToMatrix4(modeState.pendingOrientation.orientationMatrix);
+            await editorRef.current.applyCenterOrientTransform(orientationMatrix);
+            console.log(`🎯 PuzzleShapeMode: Hull orientation applied successfully`);
+            
+            // Clear the pending orientation
+            handleModeStateChange({ 
+              shouldAutoOrient: false, 
+              pendingOrientation: null 
+            });
+          }
+        } catch (error) {
+          console.error(`🎯 PuzzleShapeMode: Failed to apply orientation:`, error);
+        }
+      }, 300); // Short delay to ensure ShapeEditor3D is ready
+    }
+  }, [modeState.shouldAutoOrient, modeState.pendingOrientation, coordinates.length]);
 
   return (
     <div style={{ height: '100%', position: 'relative' }}>

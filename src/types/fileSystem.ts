@@ -71,6 +71,15 @@ export interface StatusFile {
   timestamp: string;
 }
 
+// Orientation data from convex hull analysis
+export interface OrientationData {
+  orientationMatrix: number[]; // 4x4 matrix as flat array
+  largestFaceArea: number;
+  largestFaceNormal: [number, number, number];
+  largestFaceCentroid: [number, number, number];
+  coordinateCount: number;
+}
+
 // Unified file interface
 export interface UnifiedFile {
   type: FileType;
@@ -79,6 +88,7 @@ export interface UnifiedFile {
   size: number;
   lastModified: Date;
   content: ContainerFile | SolutionFile | StatusFile;
+  orientation?: OrientationData; // Auto-calculated hull orientation
 }
 
 // File browser options

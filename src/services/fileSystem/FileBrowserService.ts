@@ -1,8 +1,10 @@
-import { FileType, ContainerFile, SolutionFile, StatusFile, UnifiedFile, FileBrowserOptions } from '../../types/fileSystem';
+import { FileType, ContainerFile, SolutionFile, StatusFile, UnifiedFile, FileBrowserOptions, OrientationData } from '../../types/fileSystem';
+import { FileOrientationService } from './FileOrientationService';
 
 export class FileBrowserService {
   private static instance: FileBrowserService;
   private baseUrl = '/content'; // GitHub public folder
+  private orientationService = FileOrientationService.getInstance();
 
   static getInstance(): FileBrowserService {
     if (!FileBrowserService.instance) {
@@ -39,7 +41,7 @@ export class FileBrowserService {
   }
 
   /**
-   * Load a specific file by path
+   * Load a specific file by path with automatic orientation calculation
    */
   async loadFile(path: string, type: FileType): Promise<UnifiedFile | null> {
     try {
@@ -51,13 +53,26 @@ export class FileBrowserService {
       const content = await response.json();
       const fileName = path.split('/').pop() || 'unknown';
       
+      // Calculate orientation data automatically for files with coordinates
+      let orientation: OrientationData | undefined = undefined;
+      if (type === FileType.CONTAINER || type === FileType.SOLUTION) {
+        console.log(`🔍 FileBrowserService: Calculating orientation for ${fileName}`);
+        const calculatedOrientation = this.orientationService.calculateOrientation(content as ContainerFile | SolutionFile);
+        
+        if (calculatedOrientation) {
+          orientation = calculatedOrientation;
+          console.log(`🔍 FileBrowserService: Orientation calculated for ${fileName} - ${orientation.coordinateCount} coordinates, largest face area: ${orientation.largestFaceArea.toFixed(3)}`);
+        }
+      }
+      
       return {
         type,
         name: fileName,
         path,
         size: JSON.stringify(content).length,
         lastModified: new Date(), // GitHub doesn't provide this easily
-        content
+        content,
+        orientation
       };
     } catch (error) {
       console.error(`Error loading file ${path}:`, error);

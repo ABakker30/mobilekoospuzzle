@@ -5,7 +5,7 @@ import { getAllModes } from './modeRegistry';
 import { WorkspaceModeId } from '../../types/workspace';
 import { UnifiedFileBrowser } from '../fileSystem/UnifiedFileBrowser';
 import { FileType, UnifiedFile } from '../../types/fileSystem';
-import { FileBrowserService } from '../../services/fileSystem/FileBrowserService';
+import { FileBrowserService, FileOrientationService } from '../../services/fileSystem';
 
 export const WorkspaceHeader: React.FC = () => {
   const { state, setMode, updateModeState, updateCoordinates } = useWorkspace();
@@ -36,7 +36,20 @@ export const WorkspaceHeader: React.FC = () => {
         const cellRecords = fileBrowserService.convertContainerToCellRecords(file.content as any);
         const coordinates = cellRecords.map(cell => ({ x: cell.i, y: cell.j, z: cell.k }));
         updateCoordinates(coordinates);
+        
         console.log(`Loaded container: ${file.name} with ${coordinates.length} cells`);
+        
+        // Store orientation data for the mode to use
+        if (file.orientation) {
+          console.log(`🎯 Storing hull orientation data for ${file.name}`);
+          console.log(`🎯 Largest face area: ${file.orientation.largestFaceArea.toFixed(3)}`);
+          
+          // Store orientation in mode state for the current mode to apply
+          updateModeState(currentMode, { 
+            pendingOrientation: file.orientation,
+            shouldAutoOrient: true 
+          });
+        }
       }
       // TODO: Handle other file types (solutions, status)
     } catch (error) {
