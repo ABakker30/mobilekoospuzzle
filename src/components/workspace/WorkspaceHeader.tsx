@@ -12,6 +12,8 @@ export const WorkspaceHeader: React.FC = () => {
   const [showUserMenu, setShowUserMenu] = useState(false);
   const [showSettings, setShowSettings] = useState(false);
   const [showModeDropdown, setShowModeDropdown] = useState(false);
+  const [isEditMode, setIsEditMode] = useState(false);
+  const [editAction, setEditAction] = useState<'add' | 'remove'>('add');
 
   const currentModeData = allModes.find(mode => mode.id === currentMode);
 
@@ -31,7 +33,7 @@ export const WorkspaceHeader: React.FC = () => {
               onClick={() => setShowSettings(!showSettings)}
               title="Debug (Alt+D)"
             >
-              🐛
+              Debug
             </button>
           )}
           
@@ -93,15 +95,14 @@ export const WorkspaceHeader: React.FC = () => {
         </div>
       </div>
 
-      {/* Line 2: Mode Dropdown (centered) */}
+      {/* Line 2: Mode (left) + Mode-specific controls (center/right) */}
       <div className="header-line-2">
         <div className="mode-selector">
           <button 
             className="mode-dropdown-button"
             onClick={() => setShowModeDropdown(!showModeDropdown)}
           >
-            <span className="mode-label">Mode:</span>
-            <span className="mode-name">{getModeDisplayName(currentMode)}</span>
+            <span className="mode-label">Mode: {getModeDisplayName(currentMode)}</span>
             <span className="dropdown-arrow">▼</span>
           </button>
           
@@ -142,6 +143,47 @@ export const WorkspaceHeader: React.FC = () => {
                 }}
               >
                 Puzzle
+              </button>
+            </div>
+          )}
+        </div>
+
+        {/* Mode-specific controls on same line */}
+        <div className="mode-controls">
+          {currentMode === 'shape' && (
+            <div className="shape-mode-controls">
+              <button className="control-button browse-button">
+                Browse
+              </button>
+              {coordinates.length > 0 && (
+                <>
+                  <button className="control-button save-button">
+                    Save
+                  </button>
+                  <label className="edit-checkbox">
+                    <input 
+                      type="checkbox" 
+                      checked={isEditMode}
+                      onChange={(e) => setIsEditMode(e.target.checked)}
+                    />
+                    Edit
+                  </label>
+                  {isEditMode && (
+                    <button
+                      className={`control-button toggle-button ${editAction === 'add' ? 'add-mode' : 'remove-mode'}`}
+                      onClick={() => setEditAction(editAction === 'add' ? 'remove' : 'add')}
+                    >
+                      {editAction === 'add' ? 'Add' : 'Remove'}
+                    </button>
+                  )}
+                </>
+              )}
+            </div>
+          )}
+          {currentMode === 'view-solution' && (
+            <div className="view-mode-controls">
+              <button className="control-button browse-button">
+                Browse
               </button>
             </div>
           )}

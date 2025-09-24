@@ -27,8 +27,89 @@
 
 .header-line-2 {
   display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 1rem;
+}
+
+.mode-controls {
+  display: flex;
   justify-content: center;
   align-items: center;
+  flex: 1;
+}
+
+.shape-mode-controls,
+.view-mode-controls {
+  display: flex;
+  align-items: center;
+  gap: 1rem;
+}
+
+.control-button {
+  padding: 0.5rem 1rem;
+  border: none;
+  border-radius: 6px;
+  cursor: pointer;
+  font-size: 0.875rem;
+  font-weight: 500;
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  transition: all 0.2s ease;
+}
+
+.browse-button {
+  background: #17a2b8;
+  color: white;
+}
+
+.browse-button:hover {
+  background: #138496;
+}
+
+.save-button {
+  background: #28a745;
+  color: white;
+}
+
+.save-button:hover {
+  background: #218838;
+}
+
+.edit-checkbox {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  cursor: pointer;
+  font-size: 0.875rem;
+  font-weight: 500;
+}
+
+.edit-checkbox input[type="checkbox"] {
+  transform: scale(1.2);
+}
+
+.toggle-button {
+  transition: all 0.2s ease;
+}
+
+.toggle-button.add-mode {
+  background: #28a745;
+  color: white;
+}
+
+.toggle-button.add-mode:hover {
+  background: #218838;
+}
+
+.toggle-button.remove-mode {
+  background: #dc3545;
+  color: white;
+}
+
+.toggle-button.remove-mode:hover {
+  background: #c82333;
 }
 
 .header-right {
@@ -38,17 +119,19 @@
 }
 
 .debug-button {
-  background: none;
+  background: #6c757d;
+  color: white;
   border: none;
-  font-size: 1rem;
+  font-size: 0.75rem;
   cursor: pointer;
-  padding: 0.25rem;
+  padding: 0.25rem 0.5rem;
   border-radius: 4px;
   transition: background-color 0.2s ease;
+  font-weight: 500;
 }
 
 .debug-button:hover {
-  background: #f8f9fa;
+  background: #5a6268;
 }
 
 .workspace-brand h1 {

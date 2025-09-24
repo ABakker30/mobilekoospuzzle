@@ -940,27 +940,11 @@ const ShapeEditor3D = forwardRef<ShapeEditor3DRef, ShapeEditor3DProps>(({
     } else if (editMode === 'add') {
       // ADD MODE CLICK - Two-stage tap process
       if (cellRecords.length === 0) {
-        // First cell case
-        if (pendingAddPosition) {
-          // Second tap - confirm add at origin
-          console.log(`Confirming first cell at origin`);
-          onCoordinatesChange([{ x: 0, y: 0, z: 0 }]);
-          setPendingAddPosition(null);
-        } else {
-          // First tap - show preview at origin
-          console.log(`First tap - showing preview at origin`);
-          const previewSphere = createPreviewSphere(true); // 50% transparent
-          previewSphere.position.set(0, 0, 0);
-          sceneRef.current.add(previewSphere);
-          previewSphereRef.current = previewSphere;
-          setPendingAddPosition({ 
-            engineCoord: { x: 0, y: 0, z: 0 }, 
-            worldCoord: new THREE.Vector3(0, 0, 0), 
-            id: 'pending_origin' 
-          });
-        }
-      } else {
-        // Subsequent cells - use raycasting to find neighbor positions
+        // No cells available - user must load a shape first
+        console.log(`No cells available - user must load a shape first`);
+        return;
+      } 
+      // Subsequent cells - use raycasting to find neighbor positions
         const intersects = raycaster.intersectObjects(neighborSpheresRef.current);
         
         if (intersects.length > 0) {
