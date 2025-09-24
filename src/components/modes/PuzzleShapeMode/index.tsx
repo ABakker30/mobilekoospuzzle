@@ -151,44 +151,25 @@ export const PuzzleShapeToolbar: React.FC<ModeToolbarProps> = ({
         </label>
 
         {isEditMode && (
-          <div style={{
-            display: 'flex',
-            gap: '0.5rem',
-            alignItems: 'center'
-          }}>
-            <label style={{
+          <button
+            onClick={() => setEditAction(editAction === 'add' ? 'delete' : 'add')}
+            style={{
+              padding: '0.5rem 1rem',
+              background: editAction === 'add' ? '#28a745' : '#dc3545',
+              color: 'white',
+              border: 'none',
+              borderRadius: '6px',
+              cursor: 'pointer',
+              fontSize: '0.875rem',
+              fontWeight: '500',
               display: 'flex',
               alignItems: 'center',
-              gap: '0.25rem',
-              cursor: 'pointer',
-              fontSize: '0.875rem'
-            }}>
-              <input
-                type="radio"
-                name="editAction"
-                value="add"
-                checked={editAction === 'add'}
-                onChange={() => setEditAction('add')}
-              />
-              ➕ Add
-            </label>
-            <label style={{
-              display: 'flex',
-              alignItems: 'center',
-              gap: '0.25rem',
-              cursor: 'pointer',
-              fontSize: '0.875rem'
-            }}>
-              <input
-                type="radio"
-                name="editAction"
-                value="delete"
-                checked={editAction === 'delete'}
-                onChange={() => setEditAction('delete')}
-              />
-              ➖ Delete
-            </label>
-          </div>
+              gap: '0.5rem',
+              transition: 'background-color 0.2s ease'
+            }}
+          >
+            {editAction === 'add' ? '➕ Add' : '➖ Remove'}
+          </button>
         )}
       </div>
 
