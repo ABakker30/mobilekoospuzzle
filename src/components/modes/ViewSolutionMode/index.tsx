@@ -36,6 +36,9 @@ export const ViewSolutionViewer: React.FC<ModeViewerProps> = ({
 
   // Load solution settings from localStorage or create defaults
   const loadSolutionSettings = (solutionFile: SolutionFile): SolutionSettings => {
+    // Count pieces from piecesUsed field in the JSON
+    const uniquePieceCount = Object.keys(solutionFile.piecesUsed).length;
+    
     try {
       const savedSettings = localStorage.getItem('viewSolutionModeSettings');
       if (savedSettings) {
@@ -45,9 +48,12 @@ export const ViewSolutionViewer: React.FC<ModeViewerProps> = ({
           return acc;
         }, {} as Record<string, boolean>);
         const defaultSettings = createDefaultSolutionSettings(piecesUsedBool);
+        
+        // Override visiblePieceCount to match this solution's piece count
         return {
           ...defaultSettings,
           ...parsed,
+          visiblePieceCount: uniquePieceCount, // Always show all pieces by default for each solution
           pieceColors: { ...defaultSettings.pieceColors, ...parsed.pieceColors }
         };
       }
@@ -59,7 +65,13 @@ export const ViewSolutionViewer: React.FC<ModeViewerProps> = ({
       acc[key] = true;
       return acc;
     }, {} as Record<string, boolean>);
-    return createDefaultSolutionSettings(piecesUsedBool);
+    const defaultSettings = createDefaultSolutionSettings(piecesUsedBool);
+    
+    // Set visiblePieceCount to match the actual number of pieces in this solution
+    return {
+      ...defaultSettings,
+      visiblePieceCount: uniquePieceCount
+    };
   };
 
   // Handle file selection from unified file browser
@@ -88,17 +100,33 @@ export const ViewSolutionViewer: React.FC<ModeViewerProps> = ({
         const settings = loadSolutionSettings(solutionData);
         setSolutionSettings(settings);
         
+        // Store solution info in workspace state for header controls
+        // Count pieces from piecesUsed field in the JSON
+        const uniquePieceTypes = Object.keys(solutionData.piecesUsed).length;
+        
+        console.log('✅ Pieces used in solution:', Object.keys(solutionData.piecesUsed));
+        console.log('✅ Total piece count:', uniquePieceTypes);
+        console.log('🚀 ABOUT TO UPDATE WORKSPACE STATE...');
+        
+        const newModeState = { 
+          ...modeState, 
+          selectedFile: null,
+          solutionLoaded: true,
+          totalPieces: uniquePieceTypes,
+          visiblePieces: Math.min(settings.visiblePieceCount, uniquePieceTypes) // Ensure it doesn't exceed available pieces
+        };
+        
+        console.log('🔥 CALLING onModeStateChange with:', newModeState);
+        onModeStateChange(newModeState);
+        console.log('✅ onModeStateChange CALLED!');
+        
         console.log('🎯 ViewSolutionMode: Solution state updated:', {
           solution: solutionData,
           settings: settings,
           name: file.name
         });
         
-        console.log('✅ Solution loaded in ViewSolutionMode:', {
-          name: file.name,
-          pieces: Object.keys(solutionData.piecesUsed).length,
-          placements: solutionData.placements.length
-        });
+        console.log('✅ FINAL COUNT:', uniquePieceTypes, 'pieces for', file.name);
         
         // Auto-center and orient the solution
         setTimeout(() => {
@@ -119,6 +147,14 @@ export const ViewSolutionViewer: React.FC<ModeViewerProps> = ({
       }
     }
   }, [modeState.selectedFile]);
+
+  // Watch for changes in visible pieces from header slider
+  useEffect(() => {
+    if (modeState.visiblePieces !== undefined && solutionSettings && modeState.visiblePieces !== solutionSettings.visiblePieceCount) {
+      console.log(`🎯 ViewSolutionMode: Updating visible pieces from header slider: ${modeState.visiblePieces}`);
+      handleSettingsChange({ visiblePieceCount: modeState.visiblePieces });
+    }
+  }, [modeState.visiblePieces, solutionSettings]);
 
   // Handle settings changes
   const handleSettingsChange = (updates: Partial<SolutionSettings>) => {
@@ -204,97 +240,12 @@ export const ViewSolutionViewer: React.FC<ModeViewerProps> = ({
 
   return (
     <div style={{ height: '100%', position: 'relative' }}>
-      {/* Solution Info Header */}
-      <div style={{
-        position: 'absolute',
-        top: '10px',
-        left: '10px',
-        zIndex: 100,
-        background: 'rgba(255, 255, 255, 0.9)',
-        padding: '8px 12px',
-        borderRadius: '6px',
-        boxShadow: '0 2px 8px rgba(0,0,0,0.1)',
-        fontSize: '12px',
-        color: '#333'
-      }}>
-        <div style={{ fontWeight: 'bold' }}>{solutionName}</div>
-        <div>{Object.keys(solution.piecesUsed).length} pieces • {solution.placements.length} placements</div>
-      </div>
-
-      {/* Solution Viewer Controls */}
-      <div style={{
-        position: 'absolute',
-        top: '10px',
-        right: '10px',
-        zIndex: 100,
-        display: 'flex',
-        gap: '8px',
-        background: 'rgba(255, 255, 255, 0.9)',
-        padding: '8px',
-        borderRadius: '6px',
-        boxShadow: '0 2px 8px rgba(0,0,0,0.1)'
-      }}>
-        {/* Piece Visibility Slider */}
-        <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
-          <span style={{ fontSize: '12px', color: '#666' }}>
-            Pieces: {solutionSettings.visiblePieceCount}/{Object.keys(solution.piecesUsed).length}
-          </span>
-          <input
-            type="range"
-            min="0"
-            max={Object.keys(solution.piecesUsed).length}
-            value={solutionSettings.visiblePieceCount}
-            onChange={(e) => handleSettingsChange({ visiblePieceCount: parseInt(e.target.value) })}
-            style={{ width: '100px' }}
-          />
-        </div>
-        
-        {/* Center & Orient Button */}
-        <button
-          onClick={() => {
-            if (solutionEditorRef.current) {
-              solutionEditorRef.current.centerAndOrientSolution();
-            }
-          }}
-          style={{
-            padding: '4px 8px',
-            fontSize: '12px',
-            border: '1px solid #ccc',
-            borderRadius: '4px',
-            background: 'white',
-            cursor: 'pointer'
-          }}
-        >
-          Center
-        </button>
-      </div>
-
-      {/* 3D Solution Viewer */}
+      {/* 3D Solution Viewer - Clean view without overlays */}
       <SolutionEditor3D
         ref={solutionEditorRef}
         solution={solution}
         settings={solutionSettings}
       />
-      
-      {/* Debug info */}
-      {process.env.NODE_ENV === 'development' && (
-        <div style={{
-          position: 'absolute',
-          bottom: '10px',
-          left: '10px',
-          background: 'rgba(0,0,0,0.8)',
-          color: 'white',
-          padding: '8px',
-          borderRadius: '4px',
-          fontSize: '10px',
-          zIndex: 1000
-        }}>
-          <div>Solution: {solution ? '✅' : '❌'}</div>
-          <div>Settings: {solutionSettings ? '✅' : '❌'}</div>
-          <div>Pieces: {solution ? Object.keys(solution.piecesUsed).length : 0}</div>
-          <div>Placements: {solution ? solution.placements.length : 0}</div>
-        </div>
-      )}
     </div>
   );
 };

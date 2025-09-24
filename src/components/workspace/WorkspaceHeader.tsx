@@ -266,6 +266,33 @@ export const WorkspaceHeader: React.FC = () => {
               >
                 Browse
               </button>
+              
+              {/* Pieces slider - only show if solution is loaded */}
+              {state.modeState[currentMode]?.solutionLoaded && (() => {
+                console.log('🎯 HEADER READING:', {
+                  totalPieces: state.modeState[currentMode]?.totalPieces,
+                  visiblePieces: state.modeState[currentMode]?.visiblePieces,
+                  solutionLoaded: state.modeState[currentMode]?.solutionLoaded
+                });
+                return true;
+              })() && (
+                <div style={{ display: 'flex', alignItems: 'center', gap: '8px', marginLeft: '12px' }}>
+                  <span style={{ fontSize: '12px', color: '#666' }}>
+                    Pieces: {state.modeState[currentMode]?.visiblePieces || 0}/{state.modeState[currentMode]?.totalPieces || 0}
+                  </span>
+                  <input
+                    type="range"
+                    min="0"
+                    max={state.modeState[currentMode]?.totalPieces || 0}
+                    value={state.modeState[currentMode]?.visiblePieces || 0}
+                    onChange={(e) => {
+                      const newValue = parseInt(e.target.value);
+                      updateModeState(currentMode, { visiblePieces: newValue });
+                    }}
+                    style={{ width: '100px' }}
+                  />
+                </div>
+              )}
             </div>
           )}
         </div>
