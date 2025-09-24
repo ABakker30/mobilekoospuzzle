@@ -64,6 +64,12 @@ export const ViewSolutionViewer: React.FC<ModeViewerProps> = ({
 
   // Handle file selection from unified file browser
   useEffect(() => {
+    console.log('🔍 ViewSolutionMode useEffect triggered:', { 
+      selectedFile: modeState.selectedFile,
+      hasSelectedFile: !!modeState.selectedFile,
+      fileType: modeState.selectedFile?.type 
+    });
+    
     if (modeState.selectedFile && modeState.selectedFile.type === FileType.SOLUTION) {
       const file = modeState.selectedFile as UnifiedFile;
       setLoading(true);
@@ -165,6 +171,14 @@ export const ViewSolutionViewer: React.FC<ModeViewerProps> = ({
       </div>
     );
   }
+
+  console.log('🎯 ViewSolutionMode render state:', { 
+    solution: !!solution, 
+    solutionSettings: !!solutionSettings,
+    loading,
+    error,
+    solutionName 
+  });
 
   if (!solution || !solutionSettings) {
     return (

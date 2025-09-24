@@ -50,8 +50,17 @@ export const WorkspaceHeader: React.FC = () => {
             shouldAutoOrient: true 
           });
         }
+      } else if (file.type === FileType.SOLUTION) {
+        console.log(`📥 Solution file selected: ${file.name}`);
+        
+        // Store the selected solution file in mode state for ViewSolutionMode to handle
+        updateModeState(currentMode, { 
+          selectedFile: file 
+        });
+        
+        console.log(`✅ Solution file stored in mode state: ${file.name}`);
       }
-      // TODO: Handle other file types (solutions, status)
+      // TODO: Handle other file types (status)
     } catch (error) {
       console.error('Error loading file:', error);
       alert('Failed to load file. Please try again.');
@@ -63,7 +72,7 @@ export const WorkspaceHeader: React.FC = () => {
       case 'shape':
         return { supportedTypes: [FileType.CONTAINER] };
       case 'view-solution':
-        return { supportedTypes: [FileType.CONTAINER, FileType.SOLUTION] };
+        return { supportedTypes: [FileType.SOLUTION] };
       case 'auto-solve':
         return { supportedTypes: [FileType.CONTAINER] };
       case 'manual-solve':
