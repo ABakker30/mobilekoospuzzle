@@ -15,7 +15,7 @@ export const WorkspaceHeader: React.FC = () => {
   const [showUserMenu, setShowUserMenu] = useState(false);
   const [showSettings, setShowSettings] = useState(false);
   const [showModeDropdown, setShowModeDropdown] = useState(false);
-  const [editAction, setEditAction] = useState<'add' | 'remove'>('add');
+  const [editAction, setEditAction] = useState<'add' | 'delete'>('add');
   const [showFileBrowser, setShowFileBrowser] = useState(false);
   
   // Get edit mode from workspace state
@@ -223,16 +223,26 @@ export const WorkspaceHeader: React.FC = () => {
                     <input 
                       type="checkbox" 
                       checked={isEditMode}
-                      onChange={(e) => updateModeState(currentMode, { editingEnabled: e.target.checked })}
+                      onChange={(e) => {
+                        const enabled = e.target.checked;
+                        updateModeState(currentMode, { 
+                          editingEnabled: enabled,
+                          editMode: enabled ? editAction : undefined
+                        });
+                      }}
                     />
                     Edit
                   </label>
                   {isEditMode && (
                     <button
-                      className={`control-button toggle-button ${editAction === 'add' ? 'add-mode' : 'remove-mode'}`}
-                      onClick={() => setEditAction(editAction === 'add' ? 'remove' : 'add')}
+                      className={`control-button toggle-button ${editAction === 'add' ? 'add-mode' : 'delete-mode'}`}
+                      onClick={() => {
+                        const newAction = editAction === 'add' ? 'delete' : 'add';
+                        setEditAction(newAction);
+                        updateModeState(currentMode, { editMode: newAction });
+                      }}
                     >
-                      {editAction === 'add' ? 'Add' : 'Remove'}
+                      {editAction === 'add' ? 'Add' : 'Delete'}
                     </button>
                   )}
                 </>
