@@ -159,7 +159,7 @@ export const ViewSolutionViewer: React.FC<ModeViewerProps> = ({
       console.log(`🎯 ViewSolutionMode: Updating visible pieces from header slider: ${modeState.visiblePieces}`);
       handleSettingsChange({ visiblePieceCount: modeState.visiblePieces });
     }
-  }, [modeState.visiblePieces, solutionSettings]);
+  }, [modeState.visiblePieces]); // Remove solutionSettings dependency to prevent infinite loop
 
   // Handle settings changes
   const handleSettingsChange = (updates: Partial<SolutionSettings>) => {

@@ -111,7 +111,12 @@ export const WorkspaceProvider: React.FC<{ children: React.ReactNode }> = ({ chi
   }, []);
 
   const updateModeState = useCallback((mode: WorkspaceModeId, newState: Record<string, any>) => {
-    console.log('🔥 WorkspaceProvider.updateModeState called:', { mode, newState });
+    // Get stack trace to identify caller
+    const stack = new Error().stack;
+    const caller = stack?.split('\n')[2]?.trim() || 'unknown';
+    
+    console.log('🔥 WorkspaceProvider.updateModeState called from:', caller);
+    console.log('🔥 Mode:', mode, 'NewState:', newState);
     console.log('🔥 Current workspace state before update:', state.modeState[mode]);
     dispatch({ type: 'UPDATE_MODE_STATE', mode, state: newState });
     console.log('🔥 Dispatch called for UPDATE_MODE_STATE');
