@@ -52,13 +52,17 @@ const workspaceReducer = (state: WorkspaceState, action: WorkspaceAction): Works
     case 'UPDATE_COORDINATES':
       return { ...state, coordinates: action.coordinates };
     case 'UPDATE_MODE_STATE':
-      return {
+      console.log('🔥 Reducer UPDATE_MODE_STATE:', { mode: action.mode, newState: action.state });
+      console.log('🔥 Current mode state:', state.modeState[action.mode]);
+      const updatedState = {
         ...state,
         modeState: {
           ...state.modeState,
           [action.mode]: { ...state.modeState[action.mode], ...action.state }
         }
       };
+      console.log('🔥 Updated mode state:', updatedState.modeState[action.mode]);
+      return updatedState;
     case 'SET_USER':
       return { 
         ...state, 
@@ -106,9 +110,12 @@ export const WorkspaceProvider: React.FC<{ children: React.ReactNode }> = ({ chi
     dispatch({ type: 'UPDATE_COORDINATES', coordinates });
   }, []);
 
-  const updateModeState = useCallback((mode: WorkspaceModeId, state: Record<string, any>) => {
-    dispatch({ type: 'UPDATE_MODE_STATE', mode, state });
-  }, []);
+  const updateModeState = useCallback((mode: WorkspaceModeId, newState: Record<string, any>) => {
+    console.log('🔥 WorkspaceProvider.updateModeState called:', { mode, newState });
+    console.log('🔥 Current workspace state before update:', state.modeState[mode]);
+    dispatch({ type: 'UPDATE_MODE_STATE', mode, state: newState });
+    console.log('🔥 Dispatch called for UPDATE_MODE_STATE');
+  }, [state.modeState]);
 
   const setUser = useCallback((user: UserProfile | null) => {
     dispatch({ type: 'SET_USER', user });

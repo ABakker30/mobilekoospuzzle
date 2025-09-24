@@ -36,8 +36,9 @@ export const ViewSolutionViewer: React.FC<ModeViewerProps> = ({
 
   // Load solution settings from localStorage or create defaults
   const loadSolutionSettings = (solutionFile: SolutionFile): SolutionSettings => {
-    // Count pieces from piecesUsed field in the JSON
-    const uniquePieceCount = Object.keys(solutionFile.piecesUsed).length;
+    // Count unique pieces actually placed in the solution
+    const uniquePiecesPlaced = new Set(solutionFile.placements.map(placement => placement.piece));
+    const uniquePieceCount = uniquePiecesPlaced.size;
     
     try {
       const savedSettings = localStorage.getItem('viewSolutionModeSettings');
@@ -101,17 +102,21 @@ export const ViewSolutionViewer: React.FC<ModeViewerProps> = ({
         setSolutionSettings(settings);
         
         // Store solution info in workspace state for header controls
-        // Count pieces from piecesUsed field in the JSON
-        const uniquePieceTypes = Object.keys(solutionData.piecesUsed).length;
+        // Count unique pieces actually placed in the solution
+        const uniquePiecesPlaced = new Set(solutionData.placements.map(placement => placement.piece));
+        const uniquePieceTypes = uniquePiecesPlaced.size;
         
-        console.log('✅ Pieces used in solution:', Object.keys(solutionData.piecesUsed));
-        console.log('✅ Total piece count:', uniquePieceTypes);
+        console.log('✅ Pieces placed in solution:', Array.from(uniquePiecesPlaced));
+        console.log('✅ Total unique pieces placed:', uniquePieceTypes);
+        console.log('✅ Total placements:', solutionData.placements.length);
         console.log('🚀 ABOUT TO UPDATE WORKSPACE STATE...');
         
         const newModeState = { 
           ...modeState, 
           selectedFile: null,
           solutionLoaded: true,
+          solutionData: solutionData,
+          solutionName: file.name,
           totalPieces: uniquePieceTypes,
           visiblePieces: Math.min(settings.visiblePieceCount, uniquePieceTypes) // Ensure it doesn't exceed available pieces
         };
