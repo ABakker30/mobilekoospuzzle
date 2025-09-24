@@ -1,4 +1,5 @@
-import { FileType, ContainerFile, SolutionFile, StatusFile, UnifiedFile, FileBrowserOptions, OrientationData } from '../../types/fileSystem';
+import { FileType, ContainerFile, StatusFile, UnifiedFile, FileBrowserOptions, OrientationData } from '../../types/fileSystem';
+import { SolutionFile } from '../../types/solution';
 import { FileOrientationService } from './FileOrientationService';
 
 export class FileBrowserService {
@@ -57,7 +58,7 @@ export class FileBrowserService {
       let orientation: OrientationData | undefined = undefined;
       if (type === FileType.CONTAINER || type === FileType.SOLUTION) {
         console.log(`🔍 FileBrowserService: Calculating orientation for ${fileName}`);
-        const calculatedOrientation = this.orientationService.calculateOrientation(content as ContainerFile | SolutionFile);
+        const calculatedOrientation = this.orientationService.calculateOrientation(content as any);
         
         if (calculatedOrientation) {
           orientation = calculatedOrientation;
@@ -143,11 +144,43 @@ export class FileBrowserService {
   }
 
   /**
-   * Load solutions (placeholder for future implementation)
+   * Load solutions from GitHub solutions directory
    */
   private async loadSolutions(): Promise<UnifiedFile[]> {
-    // TODO: Implement solution file loading
-    return [];
+    try {
+      console.log('🔍 Loading solutions from GitHub...');
+      
+      // Start with just one file to test
+      const testFile = 'Shape_2.json';
+      const url = `${this.baseUrl}/solutions/${testFile}`;
+      
+      console.log(`📥 Testing solution fetch: ${url}`);
+      const response = await fetch(url);
+      
+      if (!response.ok) {
+        console.error(`❌ Failed to fetch ${testFile}: ${response.status} ${response.statusText}`);
+        return [];
+      }
+      
+      const content = await response.json();
+      console.log(`✅ Solution content loaded:`, content);
+      
+      const solution: UnifiedFile = {
+        name: testFile,
+        path: url,
+        type: FileType.SOLUTION,
+        size: JSON.stringify(content).length,
+        lastModified: new Date(),
+        content: content
+      };
+      
+      console.log(`📁 Solution loaded successfully: ${testFile}`);
+      return [solution];
+      
+    } catch (error) {
+      console.error('❌ Failed to load solutions:', error);
+      return [];
+    }
   }
 
   /**
@@ -175,8 +208,8 @@ export class FileBrowserService {
         return `${container.cells.length} cells, ${container.designer?.name || 'Unknown designer'}`;
       
       case FileType.SOLUTION:
-        const solution = file.content as SolutionFile;
-        return `${solution.pieces.length} pieces, ${solution.metadata?.algorithm || 'Unknown algorithm'}`;
+        const solution = file.content as any; // Use any to avoid type conflicts
+        return `${Object.keys(solution.piecesUsed || {}).length} pieces, ${solution.placements?.length || 0} placements`;
       
       case FileType.STATUS:
         const status = file.content as StatusFile;
