@@ -3,19 +3,62 @@ import { useWorkspace } from './WorkspaceProvider';
 import { useAuth } from '../../hooks/useAuth';
 import { getAllModes } from './modeRegistry';
 import { WorkspaceModeId } from '../../types/workspace';
+import { UnifiedFileBrowser } from '../fileSystem/UnifiedFileBrowser';
+import { FileType, UnifiedFile } from '../../types/fileSystem';
+import { FileBrowserService } from '../../services/fileSystem/FileBrowserService';
 
 export const WorkspaceHeader: React.FC = () => {
-  const { state, setMode } = useWorkspace();
+  const { state, setMode, updateModeState, updateCoordinates } = useWorkspace();
   const { user, signInWithGoogle, signOut, isLoading } = useAuth();
   const { currentMode, coordinates } = state;
   const allModes = getAllModes();
   const [showUserMenu, setShowUserMenu] = useState(false);
   const [showSettings, setShowSettings] = useState(false);
   const [showModeDropdown, setShowModeDropdown] = useState(false);
-  const [isEditMode, setIsEditMode] = useState(false);
   const [editAction, setEditAction] = useState<'add' | 'remove'>('add');
+  const [showFileBrowser, setShowFileBrowser] = useState(false);
+  
+  // Get edit mode from workspace state
+  const isEditMode = state.modeState[currentMode]?.editingEnabled === true;
+  
+  const fileBrowserService = FileBrowserService.getInstance();
 
   const currentModeData = allModes.find(mode => mode.id === currentMode);
+
+  const handleBrowseFiles = () => {
+    setShowFileBrowser(true);
+  };
+
+  const handleFileSelect = async (file: UnifiedFile) => {
+    try {
+      if (file.type === FileType.CONTAINER) {
+        // Convert container to FCCCoord format and update workspace
+        const cellRecords = fileBrowserService.convertContainerToCellRecords(file.content as any);
+        const coordinates = cellRecords.map(cell => ({ x: cell.i, y: cell.j, z: cell.k }));
+        updateCoordinates(coordinates);
+        console.log(`Loaded container: ${file.name} with ${coordinates.length} cells`);
+      }
+      // TODO: Handle other file types (solutions, status)
+    } catch (error) {
+      console.error('Error loading file:', error);
+      alert('Failed to load file. Please try again.');
+    }
+  };
+
+  const getFileBrowserOptions = () => {
+    switch (currentMode) {
+      case 'shape':
+        return { supportedTypes: [FileType.CONTAINER] };
+      case 'view-solution':
+        return { supportedTypes: [FileType.CONTAINER, FileType.SOLUTION] };
+      case 'auto-solve':
+        return { supportedTypes: [FileType.CONTAINER] };
+      case 'manual-solve':
+        return { supportedTypes: [FileType.CONTAINER, FileType.SOLUTION] };
+      default:
+        return { supportedTypes: [FileType.CONTAINER] };
+    }
+  };
 
   return (
     <header className="workspace-header">
@@ -152,7 +195,10 @@ export const WorkspaceHeader: React.FC = () => {
         <div className="mode-controls">
           {currentMode === 'shape' && (
             <div className="shape-mode-controls">
-              <button className="control-button browse-button">
+              <button 
+                className="control-button browse-button"
+                onClick={handleBrowseFiles}
+              >
                 Browse
               </button>
               {coordinates.length > 0 && (
@@ -164,7 +210,7 @@ export const WorkspaceHeader: React.FC = () => {
                     <input 
                       type="checkbox" 
                       checked={isEditMode}
-                      onChange={(e) => setIsEditMode(e.target.checked)}
+                      onChange={(e) => updateModeState(currentMode, { editingEnabled: e.target.checked })}
                     />
                     Edit
                   </label>
@@ -182,13 +228,25 @@ export const WorkspaceHeader: React.FC = () => {
           )}
           {currentMode === 'view-solution' && (
             <div className="view-mode-controls">
-              <button className="control-button browse-button">
+              <button 
+                className="control-button browse-button"
+                onClick={handleBrowseFiles}
+              >
                 Browse
               </button>
             </div>
           )}
         </div>
       </div>
+
+      {/* Unified File Browser */}
+      <UnifiedFileBrowser
+        isOpen={showFileBrowser}
+        onClose={() => setShowFileBrowser(false)}
+        onFileSelect={handleFileSelect}
+        options={getFileBrowserOptions()}
+        title={`Browse ${currentMode === 'shape' ? 'Containers' : 'Files'}`}
+      />
     </header>
   );
 

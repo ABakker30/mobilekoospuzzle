@@ -27,16 +27,15 @@
 
 .header-line-2 {
   display: flex;
-  justify-content: space-between;
+  justify-content: flex-start;
   align-items: center;
   gap: 1rem;
 }
 
 .mode-controls {
   display: flex;
-  justify-content: center;
+  justify-content: flex-start;
   align-items: center;
-  flex: 1;
 }
 
 .shape-mode-controls,

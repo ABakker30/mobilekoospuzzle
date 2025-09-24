@@ -193,7 +193,7 @@ export const PuzzleShapeViewer: React.FC<ModeViewerProps> = ({
   
   // Get edit mode from mode state, default to 'add'
   const editMode = modeState.editMode || 'add';
-  const editingEnabled = modeState.editingEnabled !== false; // Default to true
+  const editingEnabled = modeState.editingEnabled === true && coordinates.length > 0; // Only enable when explicitly set AND coordinates exist
 
   const handleModeStateChange = (updates: any) => {
     onModeStateChange({ ...modeState, ...updates });

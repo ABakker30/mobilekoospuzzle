@@ -943,8 +943,8 @@ const ShapeEditor3D = forwardRef<ShapeEditor3DRef, ShapeEditor3DProps>(({
         // No cells available - user must load a shape first
         console.log(`No cells available - user must load a shape first`);
         return;
-      } 
-      // Subsequent cells - use raycasting to find neighbor positions
+      } else {
+        // Subsequent cells - use raycasting to find neighbor positions
         const intersects = raycaster.intersectObjects(neighborSpheresRef.current);
         
         if (intersects.length > 0) {
@@ -1130,7 +1130,7 @@ const ShapeEditor3D = forwardRef<ShapeEditor3DRef, ShapeEditor3DProps>(({
         right: 0,
         bottom: 0,
         overflow: 'hidden',
-        cursor: editingEnabled ? (editMode === 'add' ? 'crosshair' : 'pointer') : 'default'
+        cursor: editingEnabled && coordinates.length > 0 ? (editMode === 'add' ? 'crosshair' : 'pointer') : 'default'
       }}
     />
   );
