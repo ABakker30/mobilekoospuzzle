@@ -235,14 +235,14 @@ export const WorkspaceHeader: React.FC = () => {
                   </label>
                   {isEditMode && (
                     <button
-                      className={`control-button toggle-button ${editAction === 'add' ? 'add-mode' : 'delete-mode'}`}
+                      className={`control-button toggle-button ${editAction === 'add' ? 'add-mode' : 'remove-mode'}`}
                       onClick={() => {
                         const newAction = editAction === 'add' ? 'delete' : 'add';
                         setEditAction(newAction);
                         updateModeState(currentMode, { editMode: newAction });
                       }}
                     >
-                      {editAction === 'add' ? 'Add' : 'Delete'}
+                      {editAction === 'add' ? 'Add' : 'Remove'}
                     </button>
                   )}
                 </>
