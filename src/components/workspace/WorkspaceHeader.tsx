@@ -7,10 +7,13 @@ import { WorkspaceModeId } from '../../types/workspace';
 export const WorkspaceHeader: React.FC = () => {
   const { state, setMode } = useWorkspace();
   const { user, signInWithGoogle, signOut, isLoading } = useAuth();
-  const { currentMode } = state;
+  const { currentMode, coordinates } = state;
   const allModes = getAllModes();
   const [showUserMenu, setShowUserMenu] = useState(false);
   const [showSettings, setShowSettings] = useState(false);
+  const [showModeDropdown, setShowModeDropdown] = useState(false);
+
+  const currentModeData = allModes.find(mode => mode.id === currentMode);
 
   return (
     <header className="workspace-header">
@@ -18,26 +21,44 @@ export const WorkspaceHeader: React.FC = () => {
         <h1>Koos Puzzle V2</h1>
       </div>
       
-      <nav className="workspace-modes">
-        {allModes.map((mode) => (
-          <button
-            key={mode.id}
-            className={`mode-button ${currentMode === mode.id ? 'active' : ''}`}
-            style={{ 
-              '--mode-color': mode.color,
-              backgroundColor: currentMode === mode.id ? mode.color : 'transparent',
-              color: currentMode === mode.id ? 'white' : mode.color,
-              borderColor: mode.color
-            } as React.CSSProperties}
-            onClick={() => setMode(mode.id as WorkspaceModeId)}
-          >
-            <span className="mode-icon">{mode.icon}</span>
-            <span className="mode-name">{mode.displayName}</span>
-          </button>
-        ))}
-      </nav>
+      {/* Mode Dropdown */}
+      <div className="mode-selector">
+        <button 
+          className="mode-dropdown-button"
+          onClick={() => setShowModeDropdown(!showModeDropdown)}
+        >
+          <span className="mode-icon">{currentModeData?.icon}</span>
+          <span className="mode-name">{currentModeData?.displayName}</span>
+          <span className="dropdown-arrow">▼</span>
+        </button>
+        
+        {showModeDropdown && (
+          <div className="mode-dropdown">
+            {allModes.map((mode) => (
+              <button
+                key={mode.id}
+                className={`mode-option ${currentMode === mode.id ? 'active' : ''}`}
+                onClick={() => {
+                  setMode(mode.id as WorkspaceModeId);
+                  setShowModeDropdown(false);
+                }}
+                style={{ color: mode.color }}
+              >
+                <span className="mode-icon">{mode.icon}</span>
+                <span className="mode-name">{mode.displayName}</span>
+              </button>
+            ))}
+          </div>
+        )}
+      </div>
 
-      <div className="workspace-actions">
+      {/* Cell Counter */}
+      <div className="cell-counter">
+        {coordinates.length} cells
+      </div>
+
+      {/* Settings and User */}
+      <div className="header-actions">
         <button 
           className="settings-button"
           onClick={() => setShowSettings(!showSettings)}
@@ -45,9 +66,7 @@ export const WorkspaceHeader: React.FC = () => {
         >
           ⚙️
         </button>
-      </div>
 
-      <div className="workspace-user">
         {user ? (
           <div className="user-menu">
             <button 
@@ -80,15 +99,13 @@ export const WorkspaceHeader: React.FC = () => {
             )}
           </div>
         ) : (
-          <div className="auth-buttons">
-            <button 
-              className="sign-in-button"
-              onClick={signInWithGoogle}
-              disabled={isLoading}
-            >
-              {isLoading ? 'Signing in...' : 'Sign In'}
-            </button>
-          </div>
+          <button 
+            className="sign-in-button"
+            onClick={signInWithGoogle}
+            disabled={isLoading}
+          >
+            {isLoading ? 'Signing in...' : 'Sign In'}
+          </button>
         )}
       </div>
     </header>

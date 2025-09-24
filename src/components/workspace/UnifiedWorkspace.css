@@ -34,37 +34,97 @@
   margin-top: 0.25rem;
 }
 
-.workspace-modes {
+.mode-selector {
+  position: relative;
   display: flex;
-  gap: 0.5rem;
+  align-items: center;
 }
 
-.mode-button {
+.mode-dropdown-button {
   display: flex;
   align-items: center;
   gap: 0.5rem;
-  padding: 0.75rem 1rem;
-  border: 2px solid;
-  border-radius: 8px;
-  background: transparent;
+  padding: 0.5rem 0.75rem;
+  border: 1px solid #dee2e6;
+  border-radius: 6px;
+  background: white;
   cursor: pointer;
   transition: all 0.2s ease;
   font-weight: 500;
   font-size: 0.875rem;
+  color: #495057;
 }
 
-.mode-button:hover {
-  transform: translateY(-1px);
-  box-shadow: 0 4px 8px rgba(0,0,0,0.1);
+.mode-dropdown-button:hover {
+  border-color: #007bff;
+  box-shadow: 0 2px 4px rgba(0,123,255,0.1);
 }
 
-.mode-button.active {
-  transform: translateY(-1px);
+.dropdown-arrow {
+  font-size: 0.75rem;
+  transition: transform 0.2s ease;
+}
+
+.mode-dropdown {
+  position: absolute;
+  top: 100%;
+  left: 0;
+  margin-top: 0.25rem;
+  background: white;
+  border: 1px solid #dee2e6;
+  border-radius: 6px;
   box-shadow: 0 4px 12px rgba(0,0,0,0.15);
+  z-index: 1000;
+  min-width: 200px;
+}
+
+.mode-option {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  width: 100%;
+  padding: 0.75rem 1rem;
+  border: none;
+  background: none;
+  cursor: pointer;
+  font-size: 0.875rem;
+  text-align: left;
+  transition: background-color 0.2s ease;
+}
+
+.mode-option:hover {
+  background: #f8f9fa;
+}
+
+.mode-option.active {
+  background: #e3f2fd;
+  font-weight: 600;
+}
+
+.mode-option:first-child {
+  border-radius: 6px 6px 0 0;
+}
+
+.mode-option:last-child {
+  border-radius: 0 0 6px 6px;
 }
 
 .mode-icon {
   font-size: 1.25rem;
+}
+
+.cell-counter {
+  font-size: 0.875rem;
+  color: #6c757d;
+  font-weight: 500;
+  margin-left: auto;
+  margin-right: 1rem;
+}
+
+.header-actions {
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
 }
 
 .workspace-actions {
@@ -400,21 +460,17 @@
     font-size: 1.25rem;
   }
   
-  .workspace-modes {
-    gap: 0.25rem;
-  }
-  
-  .mode-button {
-    padding: 0.5rem 0.75rem;
-    font-size: 0.75rem;
-  }
-  
-  .mode-name {
+  .mode-dropdown-button .mode-name {
     display: none;
   }
   
-  .mode-icon {
-    font-size: 1.125rem;
+  .mode-dropdown {
+    min-width: 180px;
+  }
+  
+  .cell-counter {
+    font-size: 0.75rem;
+    margin-right: 0.5rem;
   }
   
   .settings-button {

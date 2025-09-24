@@ -35,6 +35,8 @@ export const PuzzleShapeToolbar: React.FC<ModeToolbarProps> = ({
   const { updateCoordinates } = useWorkspace();
   const [isLoading, setIsLoading] = useState(false);
   const [showLibrary, setShowLibrary] = useState(false);
+  const [isEditMode, setIsEditMode] = useState(false);
+  const [editAction, setEditAction] = useState<'add' | 'delete'>('add');
 
   const handleSaveShape = async () => {
     if (!user) {
@@ -87,7 +89,8 @@ export const PuzzleShapeToolbar: React.FC<ModeToolbarProps> = ({
       <div style={{ 
         display: 'flex', 
         justifyContent: 'center',
-        gap: '0.75rem',
+        alignItems: 'center',
+        gap: '1rem',
         flexWrap: 'wrap'
       }}>
         <button
@@ -130,23 +133,63 @@ export const PuzzleShapeToolbar: React.FC<ModeToolbarProps> = ({
           {isLoading ? 'Saving...' : user ? '💾 Save' : '🔒 Sign in'}
         </button>
 
-        <button
-          style={{
-            padding: '0.75rem 1.25rem',
-            background: '#007bff',
-            color: 'white',
-            border: 'none',
-            borderRadius: '8px',
-            cursor: 'pointer',
-            fontSize: '0.875rem',
-            fontWeight: '500',
-            display: 'flex',
-            alignItems: 'center',
-            gap: '0.5rem'
-          }}
-        >
+        <label style={{
+          display: 'flex',
+          alignItems: 'center',
+          gap: '0.5rem',
+          cursor: 'pointer',
+          fontSize: '0.875rem',
+          fontWeight: '500'
+        }}>
+          <input
+            type="checkbox"
+            checked={isEditMode}
+            onChange={(e) => setIsEditMode(e.target.checked)}
+            style={{ transform: 'scale(1.2)' }}
+          />
           ✏️ Edit
-        </button>
+        </label>
+
+        {isEditMode && (
+          <div style={{
+            display: 'flex',
+            gap: '0.5rem',
+            alignItems: 'center'
+          }}>
+            <label style={{
+              display: 'flex',
+              alignItems: 'center',
+              gap: '0.25rem',
+              cursor: 'pointer',
+              fontSize: '0.875rem'
+            }}>
+              <input
+                type="radio"
+                name="editAction"
+                value="add"
+                checked={editAction === 'add'}
+                onChange={() => setEditAction('add')}
+              />
+              ➕ Add
+            </label>
+            <label style={{
+              display: 'flex',
+              alignItems: 'center',
+              gap: '0.25rem',
+              cursor: 'pointer',
+              fontSize: '0.875rem'
+            }}>
+              <input
+                type="radio"
+                name="editAction"
+                value="delete"
+                checked={editAction === 'delete'}
+                onChange={() => setEditAction('delete')}
+              />
+              ➖ Delete
+            </label>
+          </div>
+        )}
       </div>
 
       <LibraryBrowser
