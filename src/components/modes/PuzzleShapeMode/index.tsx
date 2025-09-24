@@ -210,10 +210,11 @@ export const PuzzleShapeViewer: React.FC<ModeViewerProps> = ({
             await editorRef.current.applyCenterOrientTransform(orientationMatrix);
             console.log(`🎯 PuzzleShapeMode: Hull orientation applied successfully`);
             
-            // Clear the pending orientation
+            // Store the applied orientation and clear pending
             handleModeStateChange({ 
               shouldAutoOrient: false, 
-              pendingOrientation: null 
+              pendingOrientation: null,
+              appliedOrientation: modeState.pendingOrientation // Store for mode switching
             });
           }
         } catch (error) {
@@ -222,6 +223,25 @@ export const PuzzleShapeViewer: React.FC<ModeViewerProps> = ({
       }, 300); // Short delay to ensure ShapeEditor3D is ready
     }
   }, [modeState.shouldAutoOrient, modeState.pendingOrientation, coordinates.length]);
+
+  // Reapply stored orientation when switching back to this mode
+  useEffect(() => {
+    if (modeState.appliedOrientation && editorRef.current && coordinates.length > 0 && !modeState.shouldAutoOrient) {
+      console.log(`🔄 PuzzleShapeMode: Reapplying stored orientation after mode switch`);
+      
+      setTimeout(async () => {
+        try {
+          if (editorRef.current && editorRef.current.applyCenterOrientTransform) {
+            const orientationMatrix = FileOrientationService.arrayToMatrix4(modeState.appliedOrientation.orientationMatrix);
+            await editorRef.current.applyCenterOrientTransform(orientationMatrix);
+            console.log(`🔄 PuzzleShapeMode: Stored orientation reapplied successfully`);
+          }
+        } catch (error) {
+          console.error(`🔄 PuzzleShapeMode: Failed to reapply stored orientation:`, error);
+        }
+      }, 300);
+    }
+  }, [coordinates.length, modeState.appliedOrientation]);
 
   return (
     <div style={{ height: '100%', position: 'relative' }}>
