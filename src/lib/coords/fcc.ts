@@ -69,7 +69,8 @@ export function isValidFCCCoord(fcc: FCCCoord): boolean {
 }
 
 /**
- * Get rhombohedral lattice neighbors for connectivity checking
+ * Get rhombohedral FCC lattice neighbors for connectivity checking
+ * Returns 6 neighbors as used in V1 - this is correct for rhombohedral FCC in engine coordinates
  */
 export function getFCCNeighbors(fcc: FCCCoord): FCCCoord[] {
   const neighbors: FCCCoord[] = [];
@@ -88,10 +89,10 @@ export function getFCCNeighbors(fcc: FCCCoord): FCCCoord[] {
       z: fcc.z + dz
     };
     neighbors.push(neighbor);
-    console.log(`  Rhombohedral offset [${dx},${dy},${dz}] -> Engine(${neighbor.x},${neighbor.y},${neighbor.z})`);
+    console.log(`  FCC offset [${dx},${dy},${dz}] -> Engine(${neighbor.x},${neighbor.y},${neighbor.z})`);
   }
   
-  console.log(`Generated ${neighbors.length} rhombohedral neighbors for (${fcc.x}, ${fcc.y}, ${fcc.z})`);
+  console.log(`Generated ${neighbors.length} FCC neighbors for (${fcc.x}, ${fcc.y}, ${fcc.z})`);
   return neighbors; // Always return all 6
 }
 

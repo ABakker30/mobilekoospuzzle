@@ -4,7 +4,7 @@ import * as THREE from 'three';
 import { OrbitControls } from 'three/addons/controls/OrbitControls.js';
 import { FCCCoord, fccToWorld, getFCCNeighbors, centerFCCCoords } from '../../lib/coords/fcc';
 import { AppSettings, MaterialSettings } from './SettingsModal';
-import { calculateOptimalCameraPosition } from '../../lib/geometry/hull';
+// V1 Pattern: No automatic camera positioning - removed calculateOptimalCameraPosition
 import { PBRIntegrationService } from '../../services/pbrIntegration';
 
 // New CellRecord structure - single source of truth
@@ -140,53 +140,25 @@ const ShapeEditor3D = forwardRef<ShapeEditor3DRef, ShapeEditor3DProps>(({
     return engineToWorldTransform(engineCoords);
   };
 
-  // Transform engine coordinates to world coordinates with world-space centering
+  // V1 Pattern: Direct engine to world transformation - NO CENTERING
   const engineToWorldTransform = (engineCoords: FCCCoord[]): CellRecord[] => {
     if (engineCoords.length === 0) return [];
 
-    console.log(`=== TRANSFORMING ENGINE TO WORLD ===`);
-    console.log(`Input engine coords (integers):`, engineCoords.map(c => `(${c.x},${c.y},${c.z})`));
+    console.log(`=== V1 PATTERN: ENGINE TO WORLD (NO CENTERING) ===`);
+    console.log(`Input: ${engineCoords.length} engine coordinates`);
     
-    // Step 1: Convert ALL engine coordinates to world space (no centering yet)
-    const worldCoords = engineCoords.map(coord => fccToWorld(coord));
-    console.log(`World coords (before centering):`, worldCoords.map(w => `(${w.x.toFixed(2)},${w.y.toFixed(2)},${w.z.toFixed(2)})`));
-    
-    // Step 2: Find bounding box in WORLD space
-    const minX = Math.min(...worldCoords.map(w => w.x));
-    const minY = Math.min(...worldCoords.map(w => w.y));
-    const minZ = Math.min(...worldCoords.map(w => w.z));
-    const maxX = Math.max(...worldCoords.map(w => w.x));
-    const maxY = Math.max(...worldCoords.map(w => w.y));
-    const maxZ = Math.max(...worldCoords.map(w => w.z));
-    
-    // Step 3: Calculate center point in WORLD space
-    const worldCenter = {
-      x: (minX + maxX) / 2,
-      y: (minY + maxY) / 2,
-      z: (minZ + maxZ) / 2
-    };
-    console.log(`World space center: (${worldCenter.x.toFixed(2)}, ${worldCenter.y.toFixed(2)}, ${worldCenter.z.toFixed(2)})`);
-    
-    // Step 4: Apply centering in WORLD space
-    const records: CellRecord[] = engineCoords.map((originalCoord, index) => {
-      const worldPos = worldCoords[index];
-      const centeredWorldPos = {
-        x: worldPos.x - worldCenter.x,
-        y: worldPos.y - worldCenter.y,
-        z: worldPos.z - worldCenter.z
-      };
+    // V1 Pattern: Direct transformation - no centering, no shifting
+    const records: CellRecord[] = engineCoords.map((engineCoord, index) => {
+      const worldCoord = fccToWorld(engineCoord);
       
       return {
-        engineCoord: originalCoord, // KEEP original integer coordinate
-        worldCoord: new THREE.Vector3(centeredWorldPos.x, centeredWorldPos.y, centeredWorldPos.z),
-        id: `cell_${originalCoord.x}_${originalCoord.y}_${originalCoord.z}_${Date.now()}_${index}`
+        engineCoord: engineCoord,
+        worldCoord: new THREE.Vector3(worldCoord.x, worldCoord.y, worldCoord.z),
+        id: `cell_${engineCoord.x}_${engineCoord.y}_${engineCoord.z}_${index}`
       };
     });
     
-    console.log(`Created ${records.length} cell records with world-space centering`);
-    records.forEach(record => {
-      console.log(`  Engine(${record.engineCoord.x},${record.engineCoord.y},${record.engineCoord.z}) -> World(${record.worldCoord.x.toFixed(2)},${record.worldCoord.y.toFixed(2)},${record.worldCoord.z.toFixed(2)})`);
-    });
+    console.log(`V1 Pattern: Created ${records.length} cell records - NO CENTERING`);
     
     return records;
   };
@@ -220,7 +192,7 @@ const ShapeEditor3D = forwardRef<ShapeEditor3DRef, ShapeEditor3DProps>(({
     activeCells.forEach((activeCell, cellIndex) => {
       const neighbors = getFCCNeighbors(activeCell.engineCoord);
       console.log(`\n=== CELL ${cellIndex} at Engine(${activeCell.engineCoord.x},${activeCell.engineCoord.y},${activeCell.engineCoord.z}) ===`);
-      console.log(`Generated ${neighbors.length} neighbors (should be 12):`);
+      console.log(`Generated ${neighbors.length} neighbors (should be 6 for rhombohedral FCC):`);
       
       let validNeighborsForThisCell = 0;
       
@@ -288,7 +260,7 @@ const ShapeEditor3D = forwardRef<ShapeEditor3DRef, ShapeEditor3DProps>(({
       console.log(`  Neighbor Engine(${record.engineCoord.x},${record.engineCoord.y},${record.engineCoord.z}) -> World(${record.worldCoord.x.toFixed(2)},${record.worldCoord.y.toFixed(2)},${record.worldCoord.z.toFixed(2)})`);
     });
     
-    // Debug visualization removed - neighbor filtering working correctly
+    // Debug visualization removed - neighbor issue fixed
     
     return neighborRecords;
   };
@@ -659,53 +631,7 @@ const ShapeEditor3D = forwardRef<ShapeEditor3DRef, ShapeEditor3DProps>(({
       sceneRef.current.background = backgroundColor;
     }
 
-    // Update camera type or focal length if needed
-    if (cameraRef.current && controlsRef.current && containerRef.current) {
-      const currentIsOrthographic = cameraRef.current instanceof THREE.OrthographicCamera;
-      const needsCameraRecreation = currentIsOrthographic !== settings.camera.orthographic;
-      
-      // Check if focal length changed for perspective camera
-      let needsFOVUpdate = false;
-      if (!settings.camera.orthographic && cameraRef.current instanceof THREE.PerspectiveCamera) {
-        const currentFOV = cameraRef.current.fov;
-        const expectedFOV = focalLengthToFOV(settings.camera.focalLength);
-        needsFOVUpdate = Math.abs(currentFOV - expectedFOV) > 0.1;
-      }
-      
-      if (needsCameraRecreation || needsFOVUpdate) {
-        // Store current camera position and target
-        const oldPosition = cameraRef.current.position.clone();
-        const oldTarget = controlsRef.current.target.clone();
-        
-        // Create new camera or update FOV
-        if (needsCameraRecreation) {
-          const newCamera = createCamera(
-            containerRef.current.clientWidth, 
-            containerRef.current.clientHeight, 
-            settings.camera.orthographic,
-            settings.camera.focalLength
-          );
-          newCamera.position.copy(oldPosition);
-          newCamera.lookAt(oldTarget);
-          
-          // Update references
-          cameraRef.current = newCamera;
-          controlsRef.current.object = newCamera;
-        } else if (needsFOVUpdate && cameraRef.current instanceof THREE.PerspectiveCamera) {
-          // Just update FOV for existing perspective camera
-          cameraRef.current.fov = focalLengthToFOV(settings.camera.focalLength);
-          cameraRef.current.updateProjectionMatrix();
-        }
-        
-        controlsRef.current.target.copy(oldTarget);
-        controlsRef.current.update();
-        
-        // Update renderer
-        if (rendererRef.current) {
-          rendererRef.current.render(sceneRef.current!, cameraRef.current);
-        }
-      }
-    }
+    // V1 Pattern: NO camera changes after initialization - camera set once only
 
     // Ensure controls are always enabled and properly configured with full Y-axis freedom
     if (controlsRef.current) {
@@ -1058,18 +984,7 @@ const ShapeEditor3D = forwardRef<ShapeEditor3DRef, ShapeEditor3DProps>(({
       const newNeighborRecords = calculateNeighborRecords(transformedRecords);
       setNeighborRecords(newNeighborRecords);
       
-      // Step 6: Calculate optimal camera position for the transformed shape
-      if (cameraRef.current && controlsRef.current) {
-        const worldPoints = transformedRecords.map(record => record.worldCoord);
-        const { position, target } = calculateOptimalCameraPosition(worldPoints, cameraRef.current);
-        
-        // Smoothly animate camera to new position
-        cameraRef.current.position.copy(position);
-        controlsRef.current.target.copy(target);
-        controlsRef.current.update();
-        
-        console.log('🎯 Camera positioned for optimal viewing');
-      }
+      // V1 Pattern: NO automatic camera positioning - user controls camera
       
       console.log('🎯 Reset-based center & orient transformation complete');
       console.log('🎯 Transformation matrix stored for consistent editing');
